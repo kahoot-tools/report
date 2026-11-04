@@ -507,6 +507,14 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .pdf .pframe .a.k1 { background: #e21b3c; } .pdf .pframe .a.k2 { background: #1368ce; } .pdf .pframe .a.k3 { background: #d89e00; } .pdf .pframe .a.k4 { background: #26890c; }
 .pdf .popt.none .shape { background: #f1eef5; border: 1px solid #e2dded; }
 .pdf-group { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+@media (max-width: 600px) {
+  /* 手機：下載按鈕左右並排、一樣寬，「推薦」換到下一行 */
+  .tools:has(.pdf-group) { flex-wrap: wrap; }
+  .tools .pdf-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); width: 100%; margin-left: 0; }
+  .pdf-group .pdf-btn { white-space: normal; margin-left: 0; line-height: 1.35; padding: 10px 8px; }
+  .pdf-group .pdf-btn .nw { white-space: nowrap; display: inline-block; }
+  .pdf-group .pdf-btn .rec { display: table; margin: 5px auto 0; }
+}
 .pdf .pfoot { margin-top: 14px; color: #6a6380; font-size: 11px; text-align: center; }
 
 .lock .rule { font-size: 14px; line-height: 1.7; color: var(--ink); text-align: center; margin: 0; padding: 12px 16px; border-radius: 10px; background: var(--accent-soft); }
@@ -1036,7 +1044,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     const shownItems = all.slice(0, qLimit);
     const list = shownItems.filter((x) => x.q).map((x) => x.q);
     const total = R.stats.players || 1;
-    return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span><span style="flex:1"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF（簡易版）<span class=\"rec\">★ 推薦</span>")}${pdfBtn("answers", "答題 PDF（詳細版）")}</span></div>
+    return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span><span style="flex:1"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF<span class=\"nw\">（簡易版）</span><span class=\"rec\">★ 推薦</span>")}${pdfBtn("answers", "答題 PDF<span class=\"nw\">（詳細版）</span>")}</span></div>
       ${shownItems.map(({ q, sl }) => {
         if (sl) return slideAnswerCard(sl);
         const qi = img(q.media) || img(q.image);
