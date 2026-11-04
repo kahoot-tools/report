@@ -1,0 +1,1275 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kahoot 報告查詢</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: 單欄閱讀寬度；查詢卡片置中，報告頁為頂部標題＋分頁籤＋內容 */
+:root {
+  --bg: #f5f3f8;
+  --surface: #ffffff;
+  --sunken: #efecf4;
+  --ink: #1f1a2c;
+  --muted: #6a6380;
+  --line: #e2dded;
+  --accent: #5a2b85;
+  --accent-ink: #ffffff;
+  --accent-soft: #efe6f7;
+  --good: #1d8549;
+  --bad: #c3313d;
+  --warn: #a86a00;
+  --k1: #e21b3c; --k2: #1368ce; --k3: #d89e00; --k4: #26890c;
+  --display: "LXGW WenKai TC", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", serif;
+  --body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141019; --surface: #1e1928; --sunken: #18131f; --ink: #eeeaf5; --muted: #a59db8;
+    --line: #322a42; --accent: #b78ae4; --accent-ink: #1a1222; --accent-soft: #2c2240;
+    --good: #4cc27f; --bad: #ff6f7b; --warn: #f0b545; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141019; --surface: #1e1928; --sunken: #18131f; --ink: #eeeaf5; --muted: #a59db8;
+  --line: #322a42; --accent: #b78ae4; --accent-ink: #1a1222; --accent-soft: #2c2240;
+  --good: #4cc27f; --bad: #ff6f7b; --warn: #f0b545; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body);
+  font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+img { max-width: 100%; display: block; }
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 920px; margin: 0 auto; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+/* ---------- 查詢頁 ---------- */
+.lock { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding-block: 32px; }
+.lock-card { width: 100%; max-width: 420px; display: grid; gap: 22px; }
+.shapes { display: flex; gap: 6px; }
+.shape { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-size: 12px; line-height: 1; flex: none; }
+.s1 { background: var(--k1); } .s2 { background: var(--k2); } .s3 { background: var(--k3); } .s4 { background: var(--k4); }
+.lock h1 { font-family: var(--display); font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.lock p { margin: 0; color: var(--muted); }
+form.find { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: grid; gap: 16px; }
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 500; font-size: 14px; }
+.field input {
+  width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--sunken); font-size: 16px;
+}
+.field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface); }
+#code { letter-spacing: .4em; font-variant-numeric: tabular-nums; }
+.hint { font-size: 13px; color: var(--muted); }
+.btn {
+  border: 0; border-radius: 10px; padding: 12px 18px; background: var(--accent); color: var(--accent-ink);
+  font-weight: 700; font-size: 16px;
+}
+.btn[disabled] { opacity: .6; cursor: progress; }
+.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); font-weight: 500; font-size: 14px; padding: 8px 14px; }
+.err { color: var(--bad); font-size: 14px; margin: 0; }
+.help { font-size: 13px; color: var(--muted); text-align: center; }
+.help a { color: var(--accent); }
+
+/* ---------- 報告頁 ---------- */
+.top { padding-block: 28px 0; display: grid; gap: 14px; }
+.top-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.eyebrow { font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+.title-row { display: flex; gap: 16px; align-items: center; }
+.cover { width: 88px; aspect-ratio: 3/2; border-radius: 10px; object-fit: cover; flex: none; max-width: 100%; }
+.top h1 { font-family: var(--display); font-size: clamp(24px, 5vw, 34px); line-height: 1.25; margin: 0; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; color: var(--muted); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 18px; overflow-x: auto; scrollbar-width: none;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.tabs button {
+  border: 0; background: none; padding: 12px 12px 10px; font-weight: 500; color: var(--muted);
+  border-bottom: 3px solid transparent; white-space: nowrap;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.panel { padding-top: 22px; display: grid; gap: 22px; }
+h2 { font-size: 17px; margin: 0; }
+.section { display: grid; gap: 12px; align-content: start; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+
+/* 摘要 */
+/* 摘要 */
+.sum-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+@media (max-width: 860px) { .sum-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .sum-main { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .sum-grid { grid-template-columns: minmax(0, 1fr); } }
+.sum-main { display: flex; align-items: center; gap: 28px; padding: 24px 28px; }
+.bigring { position: relative; width: 150px; flex: none; max-width: 40%; }
+.bigring svg { display: block; width: 100%; height: auto; }
+.bigring > div { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.bigring b { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.bigring span { font-size: 14px; font-weight: 700; margin-top: 4px; }
+.sum-text { display: grid; gap: 10px; min-width: 0; }
+.sum-text h2 { font-family: var(--display); font-size: 30px; line-height: 1.2; }
+.sum-text p { margin: 0; color: var(--muted); font-size: 15px; }
+@media (max-width: 560px) { .sum-main { padding: 18px; gap: 16px; } .bigring { width: 110px; } .bigring b { font-size: 26px; } .sum-text h2 { font-size: 22px; } }
+.sum-list { display: grid; align-content: center; padding: 4px 18px; }
+.sum-list > div { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.sum-list > div:first-child { border-top: 0; }
+.sum-list b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.sum-list .ico { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #ffffff; font-size: 12px; font-weight: 700; }
+.sum-pod { display: grid; gap: 8px; align-content: center; }
+.sum-pod p { margin: 0; font-size: 13px; text-align: center; }
+.pod-card {
+  position: relative; border-radius: 8px; overflow: hidden; padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: linear-gradient(110deg, #46a2e8 0 62%, #9fd0f3 62% 100%); min-height: 150px;
+}
+.pod-art { width: 58%; max-width: 190px; height: auto; }
+.pod-btn { background: #1368ce; color: #ffffff; box-shadow: 0 4px 0 #0c4f9e; font-size: 15px; padding: 10px 16px; white-space: nowrap; }
+.pod-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0c4f9e; }
+#podSection { scroll-margin-top: 60px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .stats { gap: 8px; } .stat { padding: 12px; } .stat b { font-size: 22px; } .stat.ring svg { display: none; } .stat.ring { grid-template-columns: 1fr; } }
+.stat { padding: 16px; display: grid; gap: 2px; align-content: start; }
+.stat b { font-size: 28px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+.stat.ring { grid-template-columns: auto 1fr; align-items: center; gap: 12px; }
+.stat.ring > div { display: grid; gap: 2px; }
+/* 頒獎台：特寫第3名 → 第2名 → 聚光燈第1名 → 拉遠全景＋彩帶 → 第4、5名 */
+.stage {
+  position: relative; overflow: hidden; border-radius: var(--radius); color: #ffffff;
+  background: linear-gradient(180deg, #9a6ad6 0%, #7c49bd 55%, #6436a6 100%);
+  padding: 26px 12px 0; isolation: isolate;
+}
+.bunting { position: absolute; left: 0; right: 0; top: 0; height: 34px; z-index: 0; opacity: .9; }
+.stage::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .5s;
+  background: radial-gradient(circle at 50% 46%, transparent 0 92px, rgba(20, 6, 40, .72) 128px);
+}
+.stage[data-phase="spot"]::after { opacity: 1; }
+.confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+.podium-k {
+  position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: end;
+  max-width: 540px; margin: 0 auto; height: 330px; transform-origin: 50% 100%; transition: transform .9s cubic-bezier(.3,.8,.3,1);
+}
+.stage[data-phase="3"] .podium-k { transform: scale(1.65) translateX(-33.4%); }
+.stage[data-phase="2"] .podium-k { transform: scale(1.65) translateX(33.4%); }
+.stage[data-phase="spot"] .podium-k, .stage[data-phase="1"] .podium-k { transform: scale(1.5); }
+.pc { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.pname {
+  background: #ffffff; color: #1b1030; font-weight: 700; font-size: 16px; line-height: 1.3; padding: 5px 10px; margin-bottom: 12px;
+  max-width: 100%; overflow-wrap: anywhere; text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,.25);
+  opacity: 0; transform: scale(.3) rotate(0deg); transition: opacity .35s, transform .45s cubic-bezier(.3,1.6,.5,1);
+}
+.pc.named .pname { opacity: 1; }
+.pc1.named .pname { transform: scale(1) rotate(2deg); }
+.pc2.named .pname { transform: scale(1) rotate(-5deg); }
+.pc3.named .pname { transform: scale(1) rotate(4deg); }
+.pbar {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 16px;
+  background: #46178f; box-shadow: inset 0 4px 0 rgba(255,255,255,.12);
+  transform-origin: bottom; transform: scaleY(0); transition: transform .8s cubic-bezier(.2,.9,.25,1.12);
+}
+.pc.up .pbar { transform: scaleY(1); }
+.pc1 .pbar { height: 200px; } .pc2 .pbar { height: 150px; } .pc3 .pbar { height: 112px; }
+.pbadge {
+  width: 46px; height: 46px; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #ffffff;
+  clip-path: polygon(50% 0, 100% 36%, 82% 100%, 18% 100%, 0 36%); padding-top: 6px;
+}
+.pc1 .pbadge { background: linear-gradient(180deg, #ffd23f, #f0a400); }
+.pc2 .pbadge { background: linear-gradient(180deg, #a9afb8, #6f7680); }
+.pc3 .pbadge { background: linear-gradient(180deg, #ff8a3d, #e1501f); }
+.pscore { font-size: 16px; font-variant-numeric: tabular-nums; }
+.pcor { font-size: 11px; opacity: .8; }
+.runners {
+  position: relative; z-index: 5; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: 0 auto; max-width: 540px; padding: 10px; background: #2e0d63; border-radius: 10px 10px 0 0;
+  opacity: 0; transform: translateY(100%); transition: opacity .4s, transform .5s;
+}
+.stage[data-phase="all"] .runners { opacity: 1; transform: none; }
+.runners span { background: #ffffff; color: #1b1030; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.runners b { margin-right: 6px; color: #46178f; }
+@media (max-width: 520px) {
+  .podium-k { height: 290px; } .pname { font-size: 13px; padding: 4px 7px; }
+  .pc1 .pbar { height: 170px; } .pc2 .pbar { height: 128px; } .pc3 .pbar { height: 96px; }
+  .pbadge { width: 38px; height: 38px; font-size: 17px; } .pscore { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .podium-k, .pbar, .pname, .runners { transition: none !important; } }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { display: flex; gap: 12px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--line); }
+.list li:first-child { border-top: 0; }
+.list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pill { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--sunken); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill.bad { color: var(--bad); }
+.pill.good { color: var(--good); }
+.empty { padding: 16px; color: var(--muted); font-size: 14px; }
+
+/* 表格 */
+.tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.search { flex: 1 1 220px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 15px; }
+.tablebox { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-top: 1px solid var(--line); vertical-align: middle; }
+thead th { border-top: 0; font-weight: 500; color: var(--muted); font-size: 13px; white-space: nowrap; }
+thead th button { background: none; border: 0; padding: 0; color: inherit; font-weight: inherit; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover { background: var(--sunken); }
+.accbar { display: flex; align-items: center; gap: 8px; min-width: 90px; }
+.accbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; display: block; }
+.accbar i u { display: block; height: 100%; background: var(--accent); }
+.accbar span { width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+.ok { color: var(--good); font-weight: 700; white-space: nowrap; }
+.no { color: var(--bad); font-weight: 700; white-space: nowrap; }
+@media (max-width: 520px) { .hide-sm { display: none; } th, td { padding: 9px 8px; } }
+
+/* 題目 */
+.chips { display: flex; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 99px; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.q { overflow: hidden; }
+.q-head { display: flex; gap: 12px; align-items: flex-start; padding: 16px; }
+.q-head .t { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.q-head .t b { font-size: 16px; overflow-wrap: anywhere; }
+.q-head .t span { font-size: 13px; color: var(--muted); }
+.q-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; padding: 0 16px 16px; }
+.q-body.noimg { grid-template-columns: minmax(0, 1fr); }
+.q-img { border-radius: 10px; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--sunken); }
+@media (max-width: 600px) { .q-body { grid-template-columns: minmax(0, 1fr); } .q-img { max-width: 320px; } }
+.opts { display: grid; gap: 8px; align-content: start; }
+.opt { display: grid; grid-template-columns: 26px minmax(0, 1fr) 20px minmax(60px, 34%) 30px; gap: 10px; align-items: center; font-size: 14px; }
+.opt .txt { overflow-wrap: anywhere; display: flex; align-items: center; gap: 8px; }
+.opt .txt img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; }
+.opt .bar { height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.opt .bar u { display: block; height: 100%; background: var(--bad); opacity: .8; }
+.opt.right .bar u { background: var(--good); opacity: 1; }
+.opt .c { text-align: right; font-variant-numeric: tabular-nums; }
+.opt.none .shape { background: var(--sunken); border: 1px solid var(--line); }
+.opt.none .txt { color: var(--muted); }
+.q-foot { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); align-items: center; }
+.q-foot .grow { flex: 1; }
+.linkbtn { background: none; border: 0; color: var(--accent); font-weight: 500; padding: 4px 0; font-size: 14px; }
+.q-detail { border-top: 1px solid var(--line); }
+.ans { display: inline-flex; align-items: center; gap: 6px; }
+.ans .shape { width: 20px; height: 20px; font-size: 10px; border-radius: 4px; }
+.ans img { width: 34px; height: 34px; object-fit: cover; border-radius: 4px; }
+
+/* 題目預覽：所有尺寸都以卡片寬度（cqi）計算，清單、方格、PDF 比例一致 */
+.slides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .slides:not(.list) { gap: 8px; } }
+.slides.list { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 7px 12px; color: var(--muted); font-size: 14px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+@media (max-width: 520px) { .seg button span { display: none; } }
+.slide { display: grid; gap: 6px; min-width: 0; }
+.slide .lbl { font-size: 13px; color: var(--muted); }
+.frame {
+  position: relative; aspect-ratio: 16/9; border-radius: 1.2cqi; overflow: hidden; background: var(--accent-soft);
+  max-width: 100%; container-type: inline-size;
+}
+.frame > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.frame .qt {
+  position: absolute; top: 3.2%; left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 92%;
+  background: rgba(255, 255, 255, .78); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  color: #2a2238; font-weight: 700; font-size: 2.75cqi; line-height: 1.35; text-align: center;
+  padding: .5em 1.05em; border-radius: .9cqi;
+}
+.frame .grid4 {
+  position: absolute; left: 2%; right: 2%; bottom: 2.6%;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.1cqi 1.1cqi;
+}
+.frame .a {
+  display: flex; align-items: center; gap: .65em; color: #ffffff; font-size: 2.2cqi; font-weight: 700; line-height: 1.25;
+  padding: .35em 1em; min-height: 5.4cqi; border-radius: .7cqi; min-width: 0;
+  box-shadow: 0 .35cqi 0 rgba(0, 0, 0, .2); text-shadow: 0 .1cqi .2cqi rgba(0, 0, 0, .25);
+}
+.frame .a span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.frame .a img { height: 4.4cqi; width: auto; aspect-ratio: 4/3; object-fit: cover; border-radius: .4cqi; }
+.frame .a em { font-style: normal; flex: none; }
+.frame .a em:last-child:not(:first-child) { margin-left: auto; }
+.frame .a.k1 { background: var(--k1); } .frame .a.k2 { background: var(--k2); } .frame .a.k3 { background: var(--k3); } .frame .a.k4 { background: var(--k4); }
+
+/* 文字雲 */
+.wc { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5em .45em; font-size: 13px; padding: 6px 0; }
+.wc span {
+  font-size: calc(var(--s) * 1em); color: #ffffff; font-weight: 700; line-height: 1.3; padding: .2em .55em; border-radius: .22em;
+  box-shadow: 0 .14em 0 rgba(0, 0, 0, .22); overflow-wrap: anywhere; max-width: 100%;
+}
+.wc-box { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.wc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.wc-thumb {
+  position: relative; display: block; width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 12px 10px 34px; cursor: zoom-in; text-align: center;
+}
+.wc-thumb:hover { border-color: var(--accent); }
+.wc-thumb .wc { font-size: 12px; pointer-events: none; }
+.wc-more { position: absolute; left: 0; right: 0; bottom: 8px; font-size: 13px; color: var(--muted); }
+.wc-full { overflow: auto; min-height: 0; padding: 16px; background: var(--sunken); display: grid; place-items: center; }
+.wc-full img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.12); background: #fff; min-height: 120px; }
+.ptable thead th { background: var(--sunken); }
+.ptable td { padding-block: 13px; }
+.ptable .c { text-align: center; }
+.pacc { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.pacc span { min-width: 38px; text-align: right; }
+.more { display: flex; justify-content: center; padding: 16px; border-top: 1px solid var(--line); }
+.panel > .more { border-top: 0; padding-top: 0; }
+.morebtn { background: none; border: 0; color: #1368ce; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; font-size: 15px; padding: 6px 10px; }
+.warnbox { padding: 16px; display: grid; gap: 10px; font-size: 15px; }
+.warnbox p { margin: 0; }
+.warn-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.slideq .q-body { grid-template-columns: 200px minmax(0, 1fr); }
+.pdf .pslrow { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
+.pdf .pslimg { position: relative; width: 150px; aspect-ratio: 4/3; background: #f1eef5; border-radius: 6px; overflow: hidden; }
+.pdf .pslimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.pdf .psltext { font-size: 12px; padding-top: 4px; }
+.qtitle { display: flex; gap: 1em; align-items: baseline; }
+.q-head .t .qtitle span { color: inherit; font-size: inherit; }
+.qtitle .qno { flex: none; min-width: 1.2em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qhelp { position: relative; cursor: help; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; margin-top: 2px; }
+.qhelp[data-tip]:hover::after, .qhelp[data-tip]:focus::after {
+  content: attr(data-tip); position: absolute; right: -6px; top: calc(100% + 8px); white-space: nowrap; z-index: 5;
+  background: #2b2b2b; color: #ffffff; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 4px;
+}
+.sl-thumb { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: var(--sunken); max-width: 100%; }
+.sl-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.sl-thumb img.cover { object-fit: cover; }
+.sl-text { font-size: 14px; padding-top: 12px; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .slideq .q-body { grid-template-columns: minmax(0, 1fr); } .sl-thumb { max-width: 320px; } }
+.qd-stats.one { grid-template-columns: minmax(0, 1fr); }
+.tico { width: 20px; height: 20px; border: 1.5px solid var(--muted); border-radius: 4px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--muted); flex: none; }
+.frame .media { position: absolute; left: 50%; transform: translateX(-50%); top: 17%; right: auto; bottom: auto; height: 56%; max-width: 46%; width: auto; object-fit: contain; border-radius: .6cqi; z-index: 1; }
+.frame.textq .media { height: 62%; }
+.frame .qt { z-index: 2; }
+.frame.slidecard .sbox {
+  position: absolute; left: 6%; width: 44%; top: 50%; transform: translateY(-50%); z-index: 2;
+  display: grid; gap: 1.4cqi; justify-items: start;
+}
+.frame.slidecard.nomedia .sbox { left: 10%; width: 80%; justify-items: center; text-align: center; }
+.frame.slidecard .st {
+  background: rgba(255, 255, 255, .82); color: #2a2238; font-weight: 700; font-size: 3cqi; line-height: 1.3;
+  padding: .4em .8em; border-radius: .8cqi; overflow-wrap: anywhere;
+}
+.frame.slidecard .sb {
+  background: rgba(255, 255, 255, .82); color: #2a2238; font-weight: 500; font-size: 2cqi; line-height: 1.45;
+  padding: .6em .9em; border-radius: .8cqi; overflow-wrap: anywhere;
+}
+.frame.slidecard .media { left: auto; right: 4%; transform: none; top: 5%; height: 90%; max-width: 44%; border-radius: 1cqi; }
+.frame .wc-input {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 4%; background: #1368ce; color: #ffffff; font-weight: 700;
+  font-size: 2.1cqi; padding: .45em 1.2em; border-radius: .5cqi; box-shadow: 0 .35cqi 0 rgba(0,0,0,.2); white-space: nowrap;
+}
+.pdf .pcount { color: #6a6380; font-size: 12px; margin-bottom: 4px; }
+.pdf .wc { font-size: 11px; }
+
+/* 玩家明細 */
+dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 0; width: min(640px, calc(100vw - 32px)); max-height: 86vh; background: var(--surface); color: var(--ink); }
+dialog.wide { width: min(1100px, calc(100vw - 24px)); max-height: 92vh; display: none; flex-direction: column; overflow: hidden; }
+dialog.wide[open] { display: flex; }
+#qdlgBody { overflow-y: auto; min-height: 0; }
+#qdlgTitle { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 17px; }
+#qdlgTitle .qtype { font-size: 14px; font-weight: 400; white-space: nowrap; }
+.qnav { display: flex; gap: 4px; flex: none; }
+.iconbtn { width: 38px; height: 38px; border-radius: 8px; border: 1px solid transparent; background: none; font-size: 24px; line-height: 1; color: var(--ink); display: grid; place-items: center; }
+.iconbtn:hover:not([disabled]) { background: var(--sunken); }
+.iconbtn[disabled] { opacity: .3; cursor: default; }
+.iconbtn.close { border-color: var(--ink); font-size: 18px; }
+.qd-top { background: var(--sunken); padding: 18px 20px; display: grid; grid-template-columns: minmax(160px, 34%) minmax(0, 1fr); gap: 8px 22px; align-items: start; }
+.qd-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 6px; }
+.qd-noimg { background: var(--line); display: grid; place-items: center; font-size: 28px; opacity: .6; }
+.qd-time { grid-column: 1; text-align: center; font-size: 14px; }
+.qd-top .opt { padding-block: 6px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.qd-top .opt:last-child { border-bottom: 0; }
+.qd-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 18px 20px 8px; }
+.qd-stats > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--line); font-size: 14px; }
+.qd-stats b { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qd-table { margin: 12px 20px 20px; border: 1px solid var(--line); border-radius: 10px; }
+.qd-table thead th { background: var(--sunken); position: sticky; top: 0; z-index: 1; }
+.sortbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sortbtn i { font-style: normal; font-size: 9px; letter-spacing: -1px; opacity: .45; }
+.sortbtn.on { color: var(--ink); }
+.sortbtn.on i { opacity: 1; color: var(--accent); font-size: 10px; }
+.qd-table td { padding-block: 12px; }
+@media (max-width: 640px) {
+  .qd-top { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+  .qd-img { max-width: 260px; } .qd-time { text-align: left; }
+  .qd-stats { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 12px 14px 0; }
+  .qd-table { margin: 10px 0 0; border-radius: 0; border-inline: 0; }
+  #qdlgTitle { font-size: 15px; }
+}
+dialog::backdrop { background: rgba(20, 14, 30, .5); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+.dlg-head h3 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.dlg-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 16px; font-size: 14px; color: var(--muted); }
+.dlg-sum b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.sec-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pdf-btn { white-space: nowrap; }
+.pdf-btn::before { content: "↓ "; }
+.tools .pdf-btn { margin-left: auto; }
+
+/* PDF 版面（固定淺色、A4 寬） */
+#pdfStage { display: none; }
+@media print {
+  @page { size: A4; margin: 12mm 10mm; }
+  html, body { background: #ffffff !important; }
+  body.printing { padding: 0 !important; }
+  body.printing::before { display: none; }
+  body.printing > *:not(#pdfStage) { display: none !important; }
+  body.printing #pdfStage { display: block; }
+  .pdf, .pdf * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pdf { width: auto !important; padding: 0 !important; }
+  .pdf thead { display: table-header-group; }
+  .pdf tr, .pdf .popt, .pdf .ps, .pdf .pinfo { break-inside: avoid; }
+  .pdf .pq h3 { break-after: avoid; }
+  .pdf .slides { grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .pdf .slides.list { grid-template-columns: 1fr; gap: 8mm; }
+  .pdf .slide { break-inside: avoid; }
+  .pdf.detail .pq + .pq { break-before: page; }
+  .pdf.detail .pq.pslide, .pdf.detail .pq.pslide + .pq.pslide { break-before: auto; }
+  .pdf .pq.pslide { break-inside: avoid; }
+  .pdf:not(.detail) .pq { break-inside: avoid; }
+  .pdf .pq.long { break-inside: auto; }
+  .pdf .wc { break-inside: avoid; }
+}
+.pdf {
+  --bg: #ffffff; --surface: #ffffff; --sunken: #f1eef5; --ink: #1f1a2c; --muted: #6a6380; --line: #e2dded;
+  --accent: #5a2b85; --good: #1d8549; --bad: #c3313d;
+  width: 760px; background: #ffffff; color: #1f1a2c; font-family: var(--body); font-size: 13px; line-height: 1.5; padding: 4px 8px;
+}
+.pdf h1 { font-family: var(--display); font-size: 24px; margin: 0 0 4px; }
+.pdf .pmeta { color: #6a6380; font-size: 12px; margin-bottom: 14px; display: flex; gap: 14px; flex-wrap: wrap; }
+.pdf .pkind { display: inline-block; font-size: 12px; font-weight: 700; color: #5a2b85; background: #efe6f7; padding: 2px 10px; border-radius: 99px; margin-bottom: 8px; }
+.pdf table { font-size: 12px; }
+.pdf th, .pdf td { padding: 6px 8px; }
+.pdf thead th { color: #6a6380; background: #f6f4f9; }
+.pdf .pq { border: 1px solid #e2dded; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.pdf .pq h3 { margin: 0 0 4px; font-size: 14px; }
+.pdf .pq .pinfo { color: #6a6380; font-size: 12px; margin-bottom: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
+.pdf .popt { display: grid; grid-template-columns: 22px 1fr 18px 160px 52px; gap: 8px; align-items: center; margin-bottom: 4px; }
+.pdf .popt .shape { width: 20px; height: 20px; font-size: 10px; border-radius: 4px; }
+.pdf .popt .bar { height: 7px; border-radius: 4px; background: #f1eef5; overflow: hidden; }
+.pdf .popt .bar u { display: block; height: 100%; background: #c3313d; opacity: .8; }
+.pdf .popt.right .bar u { background: #1d8549; opacity: 1; }
+.pdf .thumb { flex: none; width: 30px; height: 30px; border-radius: 4px; background-size: cover; background-position: center; display: inline-block; vertical-align: middle; }
+.pdf .ans .shape { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; }
+.pdf .pslides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pdf .pslides.list { grid-template-columns: 1fr; gap: 18px; }
+.pdf .pslides.list .pframe { height: 400px; border-radius: 10px; }
+.pdf .pslides.list .pframe .qt { font-size: 20px; top: 18px; left: 90px; right: 90px; padding: 8px 14px; }
+.pdf .pslides.list .pframe .g4 { left: 14px; right: 14px; bottom: 14px; gap: 6px; }
+.pdf .pslides.list .pframe .a { font-size: 16px; height: 48px; padding: 0 14px; gap: 10px; border-radius: 5px; }
+.pdf .pslides.list .pframe .a .thumb { width: 52px; height: 40px; }
+.pdf .ps { display: grid; gap: 4px; }
+.pdf .ps .lbl { font-size: 12px; color: #6a6380; }
+.pdf .pframe { position: relative; height: 205px; border-radius: 8px; overflow: hidden; background: #efe6f7 center / cover no-repeat; }
+.pdf .pframe .qt { position: absolute; top: 10px; left: 26px; right: 26px; background: #ffffff; color: #1f1a2c; font-weight: 700; font-size: 11px; line-height: 1.35; text-align: center; padding: 5px 8px; border-radius: 4px; }
+.pdf .pframe .g4 { position: absolute; left: 10px; right: 10px; bottom: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pdf .pframe .a { display: flex; align-items: center; gap: 5px; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 6px; border-radius: 3px; height: 28px; overflow: hidden; }
+.pdf .pframe .a span { flex: 1; overflow: hidden; white-space: nowrap; }
+.pdf .pframe .a .thumb { width: 26px; height: 22px; border-radius: 2px; }
+.pdf .pframe .a.k1 { background: #e21b3c; } .pdf .pframe .a.k2 { background: #1368ce; } .pdf .pframe .a.k3 { background: #d89e00; } .pdf .pframe .a.k4 { background: #26890c; }
+.pdf .popt.none .shape { background: #f1eef5; border: 1px solid #e2dded; }
+.pdf-group { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.pdf .pfoot { margin-top: 14px; color: #6a6380; font-size: 11px; text-align: center; }
+
+footer { margin-top: 36px; font-size: 13px; color: var(--muted); text-align: center; }
+footer a { color: var(--accent); }
+footer { display: grid; gap: 8px; justify-items: center; }
+footer p { margin: 0; }
+footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-top: 1px solid var(--line); text-wrap: pretty; }
+@media (prefers-reduced-motion: no-preference) { .panel { animation: fade .2s ease-out; } @keyframes fade { from { opacity: .4; } to { opacity: 1; } } }
+</style>
+</head>
+<body>
+
+<!-- 查詢頁 -->
+<main id="lockView" class="lock">
+  <div class="lock-card">
+    <div class="shapes" aria-hidden="true"><span class="shape s1">▲</span><span class="shape s2">◆</span><span class="shape s3">●</span><span class="shape s4">■</span></div>
+    <div>
+      <h1>Kahoot 遊戲報告查詢</h1>
+      <p>輸入你的 LINE 名稱和 4 位數字碼，就能看到你的完整遊戲報告。不需要註冊或登入。</p>
+    </div>
+    <form class="find" id="findForm" novalidate>
+      <div class="field">
+        <label for="kw">LINE 名稱</label>
+        <input id="kw" name="kw" autocomplete="off" placeholder="和你的 LINE 顯示名稱相同" required>
+      </div>
+      <div class="field">
+        <label for="code">數字碼</label>
+        <input id="code" name="code" autocomplete="off" inputmode="numeric" pattern="[0-9]*" placeholder="4 位數字" maxlength="4" required>
+        <span class="hint">數字碼由客服透過 LINE 傳給你。</span>
+      </div>
+      <p class="err" id="err" role="alert" hidden></p>
+      <button class="btn" id="goBtn" type="submit">查看報告</button>
+    </form>
+    <p class="help">忘記數字碼？請聯絡 <a href="https://lin.ee/VGkH9Ps" target="_blank" rel="noopener">LINE 官方帳號 @791kunoo</a></p>
+  </div>
+</main>
+
+<!-- 報告頁 -->
+<div id="reportView" class="wrap" hidden>
+  <header class="top">
+    <div class="top-row">
+      <span class="eyebrow">Kahoot 遊戲報告</span>
+      <div class="actions">
+        <button class="btn-ghost btn" id="dlBtn" type="button" hidden>下載 Excel 報告</button>
+      </div>
+    </div>
+    <div class="title-row">
+      <img class="cover" id="rCover" alt="" hidden>
+      <div style="min-width:0">
+        <h1 id="rTitle"></h1>
+        <div class="meta" id="rMeta"></div>
+      </div>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="summary" aria-selected="true">摘要</button>
+    <button role="tab" data-tab="preview" aria-selected="false">題目</button>
+    <button role="tab" data-tab="players" aria-selected="false">參與者</button>
+    <button role="tab" data-tab="questions" aria-selected="false">答題</button>
+  </nav>
+  <section class="panel" id="panel"></section>
+  <footer>
+    <p class="note">本報告資料取自 Kahoot 後台匯出的報告檔案，並由我們重新整理版面，與 Kahoot 官方網站上的報告畫面無法完全相同。若需要原始報告可於租借期間登入後台查看與下載。</p>
+    <p>報告問題請聯絡 <a href="https://lin.ee/VGkH9Ps" target="_blank" rel="noopener">LINE 官方帳號 @791kunoo</a></p>
+  </footer>
+</div>
+
+<dialog id="qdlg" class="wide" aria-labelledby="qdlgTitle">
+  <div class="dlg-head">
+    <h3 id="qdlgTitle"></h3>
+    <div class="qnav">
+      <button class="iconbtn" id="qPrev" type="button" aria-label="上一題">‹</button>
+      <button class="iconbtn" id="qNext" type="button" aria-label="下一題">›</button>
+      <button class="iconbtn close" id="qClose" type="button" aria-label="關閉">✕</button>
+    </div>
+  </div>
+  <div id="qdlgBody"></div>
+</dialog>
+
+<dialog id="wcdlg" class="wide" aria-labelledby="wcTitle">
+  <div class="dlg-head">
+    <h3 id="wcTitle"></h3>
+    <div class="qnav">
+      <button class="btn btn-ghost pdf-btn" id="wcDl" type="button">下載文字雲圖片</button>
+      <button class="iconbtn close" id="wcClose" type="button" aria-label="關閉">✕</button>
+    </div>
+  </div>
+  <div class="wc-full"><img id="wcImg" alt="完整文字雲"></div>
+</dialog>
+
+<dialog id="dlg">
+  <div class="dlg-head"><h3 id="dlgTitle"></h3><button class="btn btn-ghost" id="dlgClose" type="button">關閉</button></div>
+  <div id="dlgBody"></div>
+</dialog>
+
+<script>
+(() => {
+  const ID_PREFIX = "kahoot-report:v2:";
+  const SHAPES = ["▲", "◆", "●", "■", "▲", "◆"];
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pct = (v) => (v == null ? "—" : Math.round(v * 100) + "%");
+  const fmt = (n) => Number(n || 0).toLocaleString("zh-TW");
+  let R = null, tab = "summary";
+
+  // ---------- 查詢 ----------
+  // 正規化規則必須和 build_report.py 的 norm_name / norm_code 一致
+  const normName = (s) => s.normalize("NFKC").toLowerCase().replace(/[\s&、,，.。·・\-_]/g, "");
+  const normCode = (c) => c.normalize("NFKC").replace(/\D/g, "");
+  const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  async function lookup(name, code) {
+    const data = new TextEncoder().encode(ID_PREFIX + name + "|" + code);
+    const id = hex(await crypto.subtle.digest("SHA-256", data)).slice(0, 40);
+    const res = await fetch("reports/" + id + ".json", { cache: "no-store" });
+    return res.ok ? res.json() : null;
+  }
+
+  $("#code").addEventListener("input", (e) => { e.target.value = normCode(e.target.value).slice(0, 4); });
+
+  $("#findForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = normName($("#kw").value), code = normCode($("#code").value);
+    const err = $("#err"), btn = $("#goBtn");
+    err.hidden = true;
+    if (!name) return showErr("請輸入 LINE 名稱。");
+    if (code.length !== 4) return showErr("數字碼是 4 位數字，請再確認一次。");
+    if (!window.crypto || !crypto.subtle) return showErr("這個瀏覽器無法查詢，請改用 Chrome 或 Safari 開啟。");
+    if (location.protocol === "file:") return showErr("直接打開檔案無法查詢。請雙擊 preview_site.bat 用本機網站測試，或上傳到 GitHub 後再查詢。");
+    btn.disabled = true; btn.textContent = "查詢中…";
+    try {
+      const data = await lookup(name, code);
+      if (!data) showErr("找不到報告。請確認 LINE 名稱和數字碼是否和客服提供的一樣。");
+      else { R = data; openReport(); }
+    } catch (x) {
+      showErr("找不到報告。請確認 LINE 名稱和數字碼是否和客服提供的一樣。");
+    } finally { btn.disabled = false; btn.textContent = "查看報告"; }
+    function showErr(m) { err.textContent = m; err.hidden = false; }
+  });
+
+  $("#dlBtn").addEventListener("click", () => {
+    if (!R || !R.excel) return;
+    if (inLine()) return alertBox(LINE_MSG);
+    const blob = new Blob([b64(R.excel.data)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = R.excel.name || "kahoot-report.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+
+  // ---------- 報告 ----------
+  const img = (k) => (k && R.images && R.images[k]) || "";
+  const shape = (i, small) => `<span class="shape s${(i % 4) + 1}" aria-hidden="true">${SHAPES[i]}</span>`;
+  function optLabel(q, i) {
+    const o = q.options[i]; if (!o) return "";
+    const src = img(o.image);
+    if (src) return `<img src="${src}" alt="圖片選項 ${i + 1}">`;
+    return o.text ? esc(o.text) : `圖片 ${i + 1}`;
+  }
+
+  // 與 Kahoot 後台相同：每題以「該題在場的玩家」為基準（中途加入的玩家不算前面的題目）
+  function normalize() {
+    R.questions.forEach((q) => {
+      q.present = q.players.length || R.stats.players;
+      const answered = q.players.filter((p) => p.answer).length;
+      q.no_answer = Math.max(0, q.present - answered);
+      const t = q.players.filter((p) => p.answer && p.time).reduce((a, p) => a + p.time, 0) + q.time * q.no_answer;
+      q.avg_time = q.present ? t / q.present : 0;
+    });
+  }
+  function openReport() {
+    normalize();
+    pLimit = PAGE_P; qLimit = PAGE_Q; pQuery = "";
+    $("#lockView").hidden = true; $("#reportView").hidden = false;
+    document.title = R.title + "｜Kahoot 報告";
+    $("#rTitle").textContent = R.title;
+    const c = img(R.cover); $("#rCover").hidden = !c; if (c) $("#rCover").src = c;
+    $("#rMeta").innerHTML = [R.played_on && `遊戲日期 ${esc(R.played_on)}`,
+      `${R.stats.players} 位玩家`, `${R.stats.questions} 題`].filter(Boolean).map((s) => `<span>${s}</span>`).join("");
+    $("#dlBtn").hidden = !R.excel;
+    document.querySelector('[data-tab="players"]').textContent = `參與者 (${R.players.length})`;
+    document.querySelector('[data-tab="questions"]').textContent = `答題 (${R.questions.length})`;
+    setTab("summary");
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab);
+  });
+  function setTab(t) {
+    tab = t;
+    if (typeof stopPodium === "function") stopPodium();
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+    const p = $("#panel");
+    p.innerHTML = { summary: viewSummary, preview: viewPreviewTab, players: viewPlayers, questions: viewQuestions }[t]();
+    if (t === "summary") startPodium();
+    if (t === "preview") p.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+      pView = b.dataset.view; try { localStorage.setItem("kr-view", pView); } catch (x) {}
+      setTab("preview");
+    }));
+    if (t === "players") bindPlayers();
+    if (t === "questions") { bindQuestions(); bindWc(p); }
+    p.querySelectorAll("[data-pdf]:not([data-pdf='comments'])").forEach((b) => b.addEventListener("click", () => makePdf(b.dataset.pdf, b.dataset.qn)));
+  }
+
+  function ring(v, size = 54) {
+    const r = (size - 8) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, v || 0));
+    const col = f < .35 ? "var(--bad)" : f < .6 ? "var(--warn)" : "var(--good)";
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">
+      <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--sunken)" stroke-width="7"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round"
+        stroke-dasharray="${c * f} ${c}" transform="rotate(-90 ${size / 2} ${size / 2})"/></svg>`;
+  }
+
+  function verdict(acc) {
+    const a = acc || 0;
+    if (a >= 0.8) return ["太厲害了！", "大家對題目瞭若指掌，幾乎每題都答對，這場遊戲的默契滿分。"];
+    if (a >= 0.6) return ["表現很棒！", "多數題目都難不倒大家，再挑戰一次就有機會全對。"];
+    if (a >= 0.4) return ["做得不錯！", "答對和答錯各有一半，題目的難易度剛剛好，玩起來最有趣。"];
+    return ["熟能生巧！", "這次的題目很有挑戰性，下次再玩一次，看看大家能不能打敗這次的成績。"];
+  }
+  const PODIUM_ART = `<svg viewBox="0 0 200 130" class="pod-art" aria-hidden="true">
+    <g fill="none" stroke-width="3" stroke-linecap="round">
+      <path d="M58 22l-4-6M72 14l1-7M128 14l-1-7M142 22l4-6M100 8v-7" stroke="#ffd23f"/>
+      <path d="M50 34l-6-2M150 34l6-2" stroke="#e21b3c"/><path d="M64 6l3 3M136 6l-3 3" stroke="#26890c"/>
+    </g>
+    <path d="M78 22h44v10c0 15-10 26-22 26S78 47 78 32z" fill="#ffc21a"/>
+    <path d="M78 28h-9c0 10 6 17 13 19M122 28h9c0 10-6 17-13 19" fill="none" stroke="#ffc21a" stroke-width="5"/>
+    <rect x="94" y="58" width="12" height="12" fill="#e5a400"/><rect x="84" y="70" width="32" height="7" rx="2" fill="#e5a400"/>
+    <text x="100" y="45" font-size="16" font-weight="700" text-anchor="middle" fill="#a86f00">1</text>
+    <rect x="76" y="80" width="48" height="46" fill="#46178f"/>
+    <rect x="28" y="96" width="46" height="30" fill="#5c2aa8"/><rect x="126" y="104" width="46" height="22" fill="#5c2aa8"/>
+    <circle cx="51" cy="86" r="10" fill="#c9ced6"/><text x="51" y="91" font-size="12" font-weight="700" text-anchor="middle" fill="#4b5059">2</text>
+    <circle cx="149" cy="94" r="10" fill="#e1501f"/><text x="149" y="99" font-size="12" font-weight="700" text-anchor="middle" fill="#ffffff">3</text>
+  </svg>`;
+  function viewSummary() {
+    const s = R.stats, [head, sub] = verdict(s.accuracy);
+    const big = (v) => {
+      const r = 64, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, v || 0));
+      return `<div class="bigring"><svg viewBox="0 0 160 160" aria-hidden="true">
+        <circle cx="80" cy="80" r="${r}" fill="none" stroke="var(--sunken)" stroke-width="14"/>
+        <circle cx="80" cy="80" r="${r}" fill="none" stroke="#26890c" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c * f} ${c}" transform="rotate(-90 80 80)"/></svg>
+        <div><b>${pct(v)}</b><span>正確</span></div></div>`;
+    };
+    return `
+      <div class="sum-grid">
+        <div class="box sum-main">${big(s.accuracy)}<div class="sum-text"><h2>${head}</h2><p>${sub}</p></div></div>
+        <div class="box sum-list">
+          <div><span class="ico" style="background:#864cbf"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" fill="#fff"/></svg></span><span>參與者</span><b>${s.players}</b></div>
+          <div><span class="ico" style="background:#1368ce">?</span><span>題目</span><b>${s.questions}</b></div>
+          <div><span class="ico" style="background:#0aa3a3">★</span><span>平均得分</span><b>${fmt(s.avg_score)}</b></div>
+        </div>
+        ${R.players.length ? `<div class="sum-pod">
+          <div class="pod-card">${PODIUM_ART}<button class="btn pod-btn" type="button" id="viewPodium">檢視頒獎台</button></div>
+          <p class="muted">點「檢視頒獎台」播放頒獎動畫</p></div>` : ""}
+      </div>
+      ${R.players.length ? `<div class="section" id="podSection" hidden><div class="sec-head"><h2>頒獎台</h2>
+        <button class="btn btn-ghost" type="button" id="replay">重播動畫</button></div>
+        <div class="stage" id="stage">${podiumHtml()}<canvas class="confetti" id="confetti" aria-hidden="true"></canvas></div></div>` : ""}`;
+  }
+  function podiumHtml() {
+    const top = R.players.slice(0, 3), nq = R.questions.filter((q) => q.scored).length;
+    const slot = (i) => {
+      const p = top[i]; if (!p) return `<div class="pc"></div>`;
+      return `<div class="pc pc${i + 1}">
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pbar"><span class="pbadge" aria-label="第 ${i + 1} 名">${i + 1}</span>
+          <b class="pscore">${fmt(p.score)}</b><span class="pcor">答對 ${p.correct}${nq ? " / " + nq : ""}</span></div>
+      </div>`;
+    };
+    const run = R.players.slice(3, 5);
+    const flags = Array.from({ length: 18 }, (_, i) => { const x = i * 60; const c = ["#e21b3c", "#1368ce", "#d89e00", "#26890c"][i % 4];
+      return `<path d="M${x} 4 L${x + 50} 4 L${x + 25} 30 Z" fill="${c}"/>`; }).join("");
+    return `<svg class="bunting" viewBox="0 0 1080 34" preserveAspectRatio="xMidYMin slice" aria-hidden="true"><path d="M0 4 H1080" stroke="#3a1677" stroke-width="2" fill="none"/>${flags}</svg>
+      <div class="podium-k">${slot(1)}${slot(0)}${slot(2)}</div>
+      ${run.length ? `<div class="runners">${run.map((p) => `<span><b>${p.rank}</b>${esc(p.name)}</span>`).join("")}</div>` : `<div class="runners" hidden></div>`}`;
+  }
+  let podTimers = [], confettiStop = null;
+  function stopPodium() { podTimers.forEach(clearTimeout); podTimers = []; if (confettiStop) confettiStop(); }
+  function startPodium() {
+    const btn = $("#replay"); if (!btn) return;
+    btn.addEventListener("click", playPodium);
+    $("#viewPodium").addEventListener("click", () => {
+      const sec = $("#podSection"); sec.hidden = false;
+      sec.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      playPodium();
+    });
+  }
+  function playPodium() {
+    stopPodium();
+    const st = $("#stage"); if (!st) return;
+    st.querySelectorAll(".bunting, .podium-k, .runners").forEach((e) => e.remove());
+    st.insertAdjacentHTML("afterbegin", podiumHtml());
+    const pc = (n) => st.querySelector(".pc" + n);
+    const add = (n, c) => pc(n) && pc(n).classList.add(c);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      [1, 2, 3].forEach((n) => { add(n, "up"); add(n, "named"); }); st.dataset.phase = "all"; return;
+    }
+    const at = (ms, fn) => podTimers.push(setTimeout(fn, ms));
+    st.dataset.phase = "3";
+    at(150, () => add(3, "up"));            at(1100, () => add(3, "named"));
+    at(2300, () => { st.dataset.phase = "2"; }); at(2700, () => add(2, "up")); at(3600, () => add(2, "named"));
+    at(4800, () => { st.dataset.phase = "spot"; }); at(5300, () => add(1, "up"));
+    at(7000, () => { st.dataset.phase = "1"; add(1, "named"); runConfetti(); });
+    at(8300, () => { st.dataset.phase = "all"; });
+  }
+  function runConfetti() {
+    const cv = $("#confetti"); if (!cv) return;
+    const ctx = cv.getContext("2d"), dpr = window.devicePixelRatio || 1;
+    const W = cv.clientWidth, H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.scale(dpr, dpr);
+    const cols = ["#e21b3c", "#1368ce", "#d89e00", "#26890c", "#ffd23f", "#ffffff"];
+    let parts = [], raf = 0, t0 = 0, stopped = false;
+    const rain = (n) => { for (let i = 0; i < n; i++) parts.push({
+      x: Math.random() * W, y: -10 - Math.random() * H * .5, vx: (Math.random() - .5) * 1.5, vy: 1.5 + Math.random() * 2.5,
+      r: Math.random() * Math.PI, vr: (Math.random() - .5) * .25, w: 5 + Math.random() * 6, h: 3 + Math.random() * 4,
+      c: cols[(Math.random() * cols.length) | 0], s: Math.random() * 6 }); };
+    rain(160);
+    const step = (ts) => {
+      if (stopped) return;
+      if (!t0) t0 = ts;
+      const el = ts - t0;
+      if (el < 3500 && Math.random() < .5) rain(3);
+      ctx.clearRect(0, 0, W, H);
+      parts.forEach((p) => { p.s += .05; p.x += p.vx + Math.sin(p.s) * .6; p.y += p.vy; p.r += p.vr;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); });
+      parts = parts.filter((p) => p.y < H + 20);
+      if (parts.length || el < 3500) raf = requestAnimationFrame(step); else ctx.clearRect(0, 0, W, H);
+    };
+    raf = requestAnimationFrame(step);
+    confettiStop = () => { stopped = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, W, H); };
+  }
+  let pView = (() => { try { return localStorage.getItem("kr-view") || "grid"; } catch (x) { return "grid"; } })();
+  const ICON_LIST = `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="3" y="3" width="14" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11" width="14" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+  const ICON_GRID = `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="3" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+  function viewPreviewTab() {
+    return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span>
+      <div class="seg" role="group" aria-label="檢視方式">
+        <button type="button" data-view="list" aria-pressed="${pView === "list"}" title="清單檢視">${ICON_LIST}<span>清單</span></button>
+        <button type="button" data-view="grid" aria-pressed="${pView === "grid"}" title="方格檢視">${ICON_GRID}<span>方格</span></button>
+      </div>${pdfBtn("slides", "下載題目頁 PDF")}</div>${viewPreview(pView)}`;
+  }
+  const pdfBtn = (kind, label) => `<button class="btn btn-ghost pdf-btn" type="button" data-pdf="${kind}">${label}</button>`;
+  const stripNum = (t) => String(t || "").replace(/^\s*\d+\.\s*/, "");
+
+  // 參與者
+  let pSort = { k: "rank", d: 1 }, pQuery = "", pLimit = 20;
+  const PAGE_P = 20, PAGE_Q = 10;
+  function miniRing(v) {
+    const r = 9, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, v || 0));
+    return `<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="${r}" fill="none" stroke="${f < 1 ? "#e21b3c" : "#26890c"}" stroke-width="3.2"/>
+      <circle cx="12" cy="12" r="${r}" fill="none" stroke="#26890c" stroke-width="3.2" stroke-dasharray="${c * f} ${c}" transform="rotate(-90 12 12)"/></svg>`;
+  }
+  function viewPlayers() {
+    const th = (k, label, cls = "") => {
+      const on = pSort.k === k;
+      return `<th class="${cls}" aria-sort="${on ? (pSort.d > 0 ? "ascending" : "descending") : "none"}"><button type="button" class="sortbtn ${on ? "on" : ""}" data-k="${k}">${label}<i>${on ? (pSort.d > 0 ? "▲" : "▼") : "▲▼"}</i></button></th>`;
+    };
+    return `<div class="tools"><input class="search" id="pSearch" type="search" placeholder="搜尋玩家暱稱" value="${esc(pQuery)}" aria-label="搜尋玩家暱稱"><span class="muted" id="pCount"></span>${pdfBtn("rank", "下載排名 PDF")}</div>
+      <div class="box tablebox ptable"><table><thead><tr>
+        ${th("name", "暱稱")}${th("rank", "排名", "r")}${th("acc", "正確度", "c")}${th("unanswered", "尚未回答", "c hide-sm")}${th("score", "最終得分", "r")}
+      </tr></thead><tbody id="pBody"></tbody></table>
+      <div class="more" id="pMore" hidden><button type="button" class="morebtn" id="pMoreBtn">顯示更多內容</button></div></div>
+      <p class="muted" style="margin:0;font-size:13px">點選玩家可以看每一題的作答內容。</p>`;
+  }
+  function bindPlayers() {
+    const draw = () => {
+      const q = pQuery.trim().toLowerCase();
+      const rows = R.players.filter((p) => !q || p.name.toLowerCase().includes(q)).slice()
+        .sort((a, b) => { const x = a[pSort.k], y = b[pSort.k]; return (typeof x === "string" ? x.localeCompare(y, "zh-Hant", { numeric: true }) : (x ?? -1) - (y ?? -1)) * pSort.d; });
+      const shown = rows.slice(0, pLimit);
+      $("#pCount").textContent = rows.length > shown.length ? `顯示 ${shown.length} / ${rows.length} 位` : `${rows.length} 位`;
+      $("#pBody").innerHTML = shown.map((p) => `<tr class="click" data-name="${esc(p.name)}" tabindex="0">
+        <td>${esc(p.name)}</td><td class="r">${p.rank}</td>
+        <td class="c"><span class="pacc">${miniRing(p.acc)}<span>${pct(p.acc)}</span></span></td>
+        <td class="c hide-sm">${p.unanswered || "—"}</td><td class="r">${p.score}</td></tr>`).join("");
+      $("#pMore").hidden = rows.length <= shown.length;
+      document.querySelectorAll(".ptable thead th").forEach((th) => {
+        const b = th.querySelector("[data-k]"), on = b.dataset.k === pSort.k;
+        b.classList.toggle("on", on); b.querySelector("i").textContent = on ? (pSort.d > 0 ? "▲" : "▼") : "▲▼";
+        th.setAttribute("aria-sort", on ? (pSort.d > 0 ? "ascending" : "descending") : "none");
+      });
+    };
+    $("#pSearch").addEventListener("input", (e) => { pQuery = e.target.value; pLimit = PAGE_P; draw(); });
+    document.querySelectorAll(".ptable thead button[data-k]").forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.k; pSort = { k, d: pSort.k === k ? -pSort.d : 1 }; draw();
+    }));
+    $("#pMoreBtn").addEventListener("click", () => { pLimit += PAGE_P; draw(); });
+    const open = (tr) => tr && showPlayer(tr.dataset.name);
+    $("#pBody").addEventListener("click", (e) => open(e.target.closest("tr")));
+    $("#pBody").addEventListener("keydown", (e) => { if (e.key === "Enter") open(e.target.closest("tr")); });
+    draw();
+  }
+
+  function showPlayer(name) {
+    const p = R.players.find((x) => x.name === name); if (!p) return;
+    $("#dlgTitle").textContent = name;
+    const rows = R.questions.map((q) => {
+      const a = q.players.find((x) => x.name === name) || { answer: "" };
+      return `<tr><td class="r">${q.n}</td><td>${answerCell(q, a)}</td><td>${resultCell(q, a)}</td>
+        <td class="r hide-sm">${a.time != null && a.answer ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${isText(q) ? "—" : fmt(a.score)}</td></tr>`;
+    }).join("");
+    $("#dlgBody").innerHTML = `<div class="dlg-sum"><span>排名 <b>${p.rank}</b></span><span>答對 <b>${p.correct}</b> 題</span><span>正確率 <b>${pct(p.acc)}</b></span><span>最終得分 <b>${fmt(p.score)}</b></span></div>
+      <div class="tablebox"><table><thead><tr><th class="r">題</th><th>作答</th><th>結果</th><th class="r hide-sm">時間</th><th class="r">得分</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    $("#dlg").showModal();
+  }
+  $("#dlgClose").addEventListener("click", () => $("#dlg").close());
+  $("#dlg").addEventListener("click", (e) => { if (e.target === $("#dlg")) $("#dlg").close(); });
+
+  function answerCell(q, a) {
+    if (!a.answer) return `<span class="muted">沒有作答</span>`;
+    if (a.opt != null) return `<span class="ans">${shape(a.opt)}${optLabel(q, a.opt)}</span>`;
+    return esc(a.answer);
+  }
+  function resultCell(q, a) {
+    if (!q.scored) return `<span class="muted">—</span>`;
+    return a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`;
+  }
+
+  // 題目
+  let qFilter = "all", qLimit = 10;
+  function viewQuestions() {
+    // 題目與投影片依原本順序排列，「顯示更多」以項目計算（與 Kahoot 後台相同）
+    const all = R.questions.map((q) => ({ n: q.n, q })).concat((R.slides || []).map((sl) => ({ n: sl.n, sl }))).sort((a, b) => a.n - b.n);
+    const shownItems = all.slice(0, qLimit);
+    const list = shownItems.filter((x) => x.q).map((x) => x.q);
+    const total = R.stats.players || 1;
+    return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span><span style="flex:1"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF（簡易版）")}${pdfBtn("answers", "答題 PDF（詳細版）")}</span></div>
+      ${shownItems.map(({ q, sl }) => {
+        if (sl) return slideAnswerCard(sl);
+        const qi = img(q.media) || img(q.image);
+        return `<article class="box q" data-q="${q.n}">
+          <div class="q-head"><div class="t"><b class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></b><span>${esc(q.type)}</span></div>
+            ${q.scored ? `<div style="display:grid;justify-items:center;font-size:13px">${ring(q.pct, 44)}<span class="num">${pct(q.pct)}</span></div>` : ""}</div>
+          <div class="q-body ${qi ? "" : "noimg"}">
+            ${qi ? `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">` : ""}
+            ${isText(q) ? textBlock(q) : `<div class="opts">
+              ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${shape(i)}<span class="txt">${optLabel(q, i)}</span>
+                <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
+                <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
+              <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
+                <span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:var(--muted)"></u></span><span class="c">${q.no_answer}</span></div>
+            </div>`}
+          </div>
+          <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>
+            <span>作答 ${q.present - q.no_answer}/${q.present}</span><span class="grow"></span>
+            <button class="linkbtn" data-detail="${q.n}">查看每位玩家作答</button></div>
+        </article>`;
+      }).join("") || `<div class="box empty">沒有符合的題目</div>`}
+      ${all.length > shownItems.length ? `<div class="more"><button type="button" class="morebtn" id="qMoreBtn">顯示更多內容（${shownItems.length} / ${all.length}）</button></div>` : ""}`;
+  }
+  function slideAnswerCard(sl) {
+    const mi = img(sl.media), bi = img(sl.image);
+    return `<article class="box q slideq" data-slide="${sl.n}">
+      <div class="q-head"><div class="t"><b class="qtitle"><span class="qno">${sl.n}</span><span>${esc(sl.title || "（無標題）")}</span></b><span>投影片</span></div>
+        <span class="qhelp" tabindex="0" aria-label="投影片不需要作答" data-tip="投影片不需要作答。">?</span></div>
+      <div class="q-body">
+        <div class="sl-thumb">${mi ? `<img src="${mi}" alt="投影片 ${sl.n} 圖片">` : bi ? `<img class="cover" src="${bi}" alt="">` : ""}</div>
+        <div class="sl-text">${sl.body ? esc(sl.body) : ""}</div>
+      </div></article>`;
+  }
+  function bindQuestions() {
+    const mb = $("#qMoreBtn");
+    if (mb) mb.addEventListener("click", () => { const y = window.scrollY; qLimit += PAGE_Q; setTab("questions"); window.scrollTo(0, y); });
+    document.querySelectorAll("[data-detail]").forEach((b) => b.addEventListener("click", () => openQ(+b.dataset.detail)));
+  }
+
+  // ---------- 文字雲（自由作答題）----------
+  const isText = (q) => !q.options || !q.options.length;
+  const WC_COLORS = ["#e21b3c", "#1368ce", "#d89e00", "#26890c"];
+  function cloudItems(q) {
+    const groups = new Map();
+    q.players.forEach((p) => {
+      const t = String(p.answer || "").trim(); if (!t) return;
+      const key = t.normalize("NFKC").toLowerCase().replace(/[\s!！。.～~…]+$/u, "");
+      if (!groups.has(key)) groups.set(key, { variants: new Map(), count: 0 });
+      const g = groups.get(key); g.count++; g.variants.set(t, (g.variants.get(t) || 0) + 1);
+    });
+    return [...groups.values()].map((g) => ({ text: [...g.variants.entries()].sort((a, b) => b[1] - a[1])[0][0], count: g.count }))
+      .sort((a, b) => b.count - a.count || a.text.localeCompare(b.text, "zh-Hant"));
+  }
+  // 大的放中間，小的往兩邊排
+  function cloudOrder(items) {
+    const out = [];
+    items.forEach((it, i) => (i % 2 ? out.push(it) : out.unshift(it)));
+    return out;
+  }
+  const colorOf = (t) => { let h = 0; for (const c of t) h = (h * 31 + c.codePointAt(0)) >>> 0; return WC_COLORS[h % 4]; };
+  function cloudHtml(q, given) {
+    const items = given || cloudItems(q); if (!items.length) return `<p class="muted">沒有留言</p>`;
+    const max = items[0].count;
+    return `<div class="wc">${cloudOrder(items).map((it) => `<span style="--s:${(0.95 + 1.55 * Math.sqrt((it.count - 1) / Math.max(1, max - 1))).toFixed(2)};background:${colorOf(it.text)}" title="${it.count} 人">${esc(it.text)}</span>`).join("")}</div>`;
+  }
+  function textBlock(q) {
+    const items = cloudItems(q), total = items.reduce((a, c) => a + c.count, 0);
+    const top = items.slice(0, 10);
+    return `<div class="wc-box">
+      <div class="wc-head"><span class="muted">前 ${top.length} 名的答案・共 ${total} 則留言</span>
+        <button class="linkbtn" type="button" data-pdf="comments" data-qn="${q.n}">下載留言（PDF）</button></div>
+      <button class="wc-thumb" type="button" data-wc-open="${q.n}" aria-label="查看完整文字雲">
+        ${cloudHtml({ players: [] }, top)}<span class="wc-more">🔍 點擊查看完整文字雲</span>
+      </button></div>`;
+  }
+  function commentsTable(q) {
+    return `<table style="margin-top:8px"><thead><tr><th>玩家</th><th>留言</th><th class="r">時間</th></tr></thead><tbody>
+      ${q.players.filter((a) => a.answer).map((a) => `<tr><td>${esc(a.name)}</td><td>${esc(a.answer)}</td><td class="r">${a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td></tr>`).join("")}
+      </tbody></table>`;
+  }
+  function pdfComments(q) {
+    const n = q.players.filter((a) => a.answer).length;
+    return pdfHead("賓客留言") + `<div class="pq long"><h3 class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></h3>
+      <div class="pinfo"><span>共 ${n} 則留言</span><span>參與者已回答 ${q.present}/${R.stats.players}</span></div>
+      ${cloudHtml(q)}${commentsTable(q)}</div>`;
+  }
+  function bindWc(root) {
+    root.querySelectorAll("[data-wc-open]").forEach((b) => b.addEventListener("click", () => openCloud(R.questions.find((q) => q.n === +b.dataset.wcOpen))));
+    root.querySelectorAll("[data-pdf='comments']").forEach((b) => { if (!b.dataset.bound) { b.dataset.bound = 1; b.addEventListener("click", () => makePdf("comments", b.dataset.qn)); } });
+  }
+  function saveBlob(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name.replace(/[\\/:*?"<>|]/g, "");
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  let wcCanvas = null, wcQ = null;
+  async function openCloud(q) {
+    wcQ = q;
+    $("#wcTitle").textContent = `${q.n}. ${stripNum(q.text)}`;
+    $("#wcImg").removeAttribute("src");
+    $("#wcdlg").showModal();
+    wcCanvas = await renderCloud(q);
+    if (wcCanvas) $("#wcImg").src = wcCanvas.toDataURL("image/png");
+  }
+  $("#wcClose").addEventListener("click", () => $("#wcdlg").close());
+  $("#wcdlg").addEventListener("click", (e) => { if (e.target === $("#wcdlg")) $("#wcdlg").close(); });
+  $("#wcDl").addEventListener("click", () => {
+    if (inLine()) return alertBox(LINE_MSG);
+    if (wcCanvas) wcCanvas.toBlob((blob) => blob && saveBlob(blob, `${R.title}_第${wcQ.n}題文字雲.png`), "image/png");
+  });
+  async function renderCloud(q) {
+    const items = cloudOrder(cloudItems(q)); if (!items.length) return null;
+    const max = Math.max(...items.map((i) => i.count));
+    const W = 1800, PAD = 70, GAP_X = 16, GAP_Y = 18, maxW = W - PAD * 2;
+    const font = (px) => `700 ${px}px "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif`;
+    await (document.fonts ? document.fonts.ready : Promise.resolve());
+    const cv = document.createElement("canvas"), ctx = cv.getContext("2d");
+    const boxes = items.map((it) => {
+      let px = 30 + 62 * Math.sqrt((it.count - 1) / Math.max(1, max - 1));
+      ctx.font = font(px);
+      let w = ctx.measureText(it.text).width + px * 1.1;
+      if (w > maxW) { px *= maxW / w; ctx.font = font(px); w = ctx.measureText(it.text).width + px * 1.1; }
+      return { ...it, px, w, h: px * 1.75 };
+    });
+    const rows = []; let row = [], rw = 0;
+    boxes.forEach((b) => { if (row.length && rw + GAP_X + b.w > maxW) { rows.push(row); row = []; rw = 0; } rw += (row.length ? GAP_X : 0) + b.w; row.push(b); });
+    if (row.length) rows.push(row);
+    const titlePx = 40, titleH = titlePx * 1.6 + 30;
+    const cloudH = rows.reduce((a, r) => a + Math.max(...r.map((b) => b.h)), 0) + GAP_Y * (rows.length - 1);
+    const H = PAD + titleH + cloudH + PAD;
+    cv.width = W; cv.height = H;
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#2a2238"; ctx.font = font(titlePx); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(stripNum(q.text).slice(0, 60), W / 2, PAD + titlePx * 0.8);
+    let y = PAD + titleH;
+    rows.forEach((r) => {
+      const rh = Math.max(...r.map((b) => b.h));
+      let x = (W - (r.reduce((a, b) => a + b.w, 0) + GAP_X * (r.length - 1))) / 2;
+      r.forEach((b) => {
+        const by = y + (rh - b.h) / 2, rad = Math.max(6, b.px * 0.18);
+        const rr = (yy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, yy, b.w, b.h, rad) : ctx.rect(x, yy, b.w, b.h); ctx.fill(); };
+        rr(by + b.px * 0.1, "rgba(0,0,0,.22)");
+        rr(by, colorOf(b.text));
+        ctx.fillStyle = "#ffffff"; ctx.font = font(b.px); ctx.textAlign = "center";
+        ctx.fillText(b.text, x + b.w / 2, by + b.h / 2 + b.px * 0.04);
+        x += b.w + GAP_X;
+      });
+      y += rh + GAP_Y;
+    });
+    return cv;
+  }
+
+  // 題目作答彈窗
+  let curQ = 1, qSort = { k: "name", d: 1 };
+  const SORTS = {
+    name: (a, b) => a.name.localeCompare(b.name, "zh-Hant", { numeric: true, sensitivity: "base" }),
+    answer: (a, b) => (a.opt ?? 99) - (b.opt ?? 99) || (!a.answer - !b.answer) || String(a.answer).localeCompare(String(b.answer), "zh-Hant"),
+    correct: (a, b) => (b.correct ? 1 : 0) - (a.correct ? 1 : 0),
+    time: (a, b) => (a.answer && a.time != null ? a.time : 1e9) - (b.answer && b.time != null ? b.time : 1e9),
+    score: (a, b) => (a.score || 0) - (b.score || 0),
+  };
+  function qRows(q) {
+    const names = new Set(q.players.map((p) => p.name));
+    return q.players.slice();
+  }
+  function openQ(n) {
+    curQ = n; drawQ();
+    const d = $("#qdlg"); if (!d.open) d.showModal();
+    $("#qdlgBody").scrollTop = 0;
+  }
+  function drawQ() {
+    const q = R.questions.find((x) => x.n === curQ); if (!q) return;
+    const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
+    $("#qdlgTitle").innerHTML = `<span class="muted qtype">${q.n} - ${esc(q.type)}</span>${esc(q.text)}`;
+    $("#qPrev").disabled = curQ <= R.questions[0].n;
+    $("#qNext").disabled = curQ >= R.questions[R.questions.length - 1].n;
+    const rows = qRows(q).slice().sort((a, b) => SORTS[qSort.k](a, b) * qSort.d || SORTS.name(a, b));
+    const th = (k, label, cls = "") => {
+      const on = qSort.k === k;
+      return `<th class="${cls}" aria-sort="${on ? (qSort.d > 0 ? "ascending" : "descending") : "none"}"><button type="button" class="sortbtn ${on ? "on" : ""}" data-sort="${k}">${label}<i>${on ? (qSort.d > 0 ? "▲" : "▼") : "▲▼"}</i></button></th>`;
+    };
+    $("#qdlgBody").innerHTML = `
+      <div class="qd-top">
+        ${qi ? `<img class="qd-img" src="${qi}" alt="第 ${q.n} 題圖片">` : `<div class="qd-img qd-noimg" aria-hidden="true">🖼</div>`}
+        ${isText(q) ? textBlock(q) : `<div class="opts">
+          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${shape(i)}<span class="txt">${optLabel(q, i)}</span>
+            <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
+            <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
+          <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
+            <span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:var(--muted)"></u></span><span class="c">${q.no_answer}</span></div>
+        </div>`}
+        <div class="qd-time muted">⏱ ${q.time} 秒時間限制</div>
+      </div>
+      <div class="qd-stats ${isText(q) ? "one" : ""}">
+        ${isText(q) ? "" : `<div><span>正確答案</span><b>${q.scored ? ring(q.pct, 30) + pct(q.pct) : "—"}</b></div>
+        <div><span>平均答題時間</span><b>${q.avg_time.toFixed(2)} 秒</b></div>`}
+        <div><span>參與者已回答</span><b>${q.present}/${total}</b></div>
+      </div>
+      <div class="tablebox qd-table"><table><thead><tr>
+        ${isText(q) ? th("name", "玩家") + th("answer", "已回答") + th("time", "時間", "r")
+          : th("name", "玩家") + th("answer", "已回答") + th("correct", "正確/不正確") + th("time", "時間", "r") + th("score", "分數", "r")}
+      </tr></thead><tbody>
+        ${rows.map((a) => isText(q)
+          ? `<tr><td>${esc(a.name)}</td><td>${a.answer ? `<span class="ans"><span class="tico" aria-hidden="true">T</span>${esc(a.answer)}</span>` : `<span class="muted">沒有作答</span>`}</td>
+            <td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td></tr>`
+          : `<tr><td>${esc(a.name)}</td><td>${answerCell(q, a)}</td><td>${resultCell(q, a)}</td>
+          <td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${fmt(a.score)}</td></tr>`).join("")}
+      </tbody></table></div>`;
+    bindWc($("#qdlgBody"));
+    $("#qdlgBody").querySelectorAll("[data-sort]").forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.sort;
+      qSort = { k, d: qSort.k === k ? -qSort.d : 1 };
+      const y = $("#qdlgBody").scrollTop; drawQ(); $("#qdlgBody").scrollTop = y;
+    }));
+  }
+  $("#qPrev").addEventListener("click", () => openQ(curQ - 1));
+  $("#qNext").addEventListener("click", () => openQ(curQ + 1));
+  $("#qClose").addEventListener("click", () => $("#qdlg").close());
+  $("#qdlg").addEventListener("click", (e) => { if (e.target === $("#qdlg")) $("#qdlg").close(); });
+  $("#qdlg").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft" && !$("#qPrev").disabled) openQ(curQ - 1);
+    if (e.key === "ArrowRight" && !$("#qNext").disabled) openQ(curQ + 1);
+  });
+
+  // ---------- PDF（瀏覽器列印 → 另存為 PDF）----------
+  const LINE_MSG = "LINE 內建瀏覽器無法下載檔案。請點右上角「⋯」，選「用預設瀏覽器開啟」後再下載。";
+  const inLine = () => /\bLine\//i.test(navigator.userAgent);
+  const thumb = (src) => `<i class="thumb" style="background-image:url('${src}')"></i>`;
+  function pdfAns(q, a) {
+    if (!a.answer) return `<span class="muted">沒有作答</span>`;
+    if (a.opt == null) return esc(a.answer);
+    const o = q.options[a.opt], src = img(o && o.image);
+    return `<span class="ans">${shape(a.opt)}${src ? thumb(src) : esc(o.text || "圖片 " + (a.opt + 1))}</span>`;
+  }
+  function pdfHead(kind) {
+    return `<span class="pkind">${kind}</span><h1>${esc(R.title)}</h1>
+      <div class="pmeta">${R.played_on ? `<span>遊戲日期 ${esc(R.played_on)}</span>` : ""}<span>${R.stats.players} 位玩家</span><span>${R.stats.questions} 題</span><span>整體正確率 ${pct(R.stats.accuracy)}</span></div>`;
+  }
+  function pdfRank() {
+    return pdfHead("排名") + `<table><thead><tr><th class="r">排名</th><th>暱稱</th><th class="r">答對題數</th><th class="r">正確率</th><th class="r">未作答</th><th class="r">最終得分</th></tr></thead><tbody>
+      ${R.players.map((p) => `<tr><td class="r">${p.rank}</td><td>${esc(p.name)}</td><td class="r">${p.correct}</td><td class="r">${pct(p.acc)}</td><td class="r">${p.unanswered}</td><td class="r">${fmt(p.score)}</td></tr>`).join("")}
+      </tbody></table>`;
+  }
+  function pdfAnswers(detail) {
+    const total = R.stats.players || 1;
+    const qHtml = new Map(R.questions.map((q) => {
+      const names = new Set(q.players.map((p) => p.name));
+      const rows = q.players;
+      const right = q.options.map((o, i) => o.correct ? (o.text || "圖片 " + (i + 1)) : null).filter(Boolean).join("、");
+      const opts = q.options.map((o, i) => { const src = img(o.image); return `<div class="popt ${o.correct ? "right" : ""}">${shape(i)}<span>${src ? thumb(src) : esc(o.text)}</span><span class="${o.correct ? "ok" : "no"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span><span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="r num">${o.count} 人</span></div>`; }).join("")
+        + `<div class="popt none"><span class="shape"></span><span class="muted">沒有作答</span><span></span><span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:#9a93ad"></u></span><span class="r num">${q.no_answer} 人</span></div>`;
+      const optsOrCloud = isText(q) ? `<div class="pcount">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</div>${cloudHtml(q)}` : opts;
+      const table = detail && isText(q) ? commentsTable(q) : detail ? `<table style="margin-top:8px"><thead><tr><th>玩家</th><th>作答</th><th>結果</th><th class="r">時間</th><th class="r">得分</th><th class="r">累計</th></tr></thead><tbody>
+        ${rows.map((a) => `<tr><td>${esc(a.name)}</td><td>${pdfAns(q, a)}</td><td>${!q.scored ? "—" : a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`}</td><td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${fmt(a.score)}</td><td class="r">${a.total != null ? fmt(a.total) : "—"}</td></tr>`).join("")}
+        </tbody></table>` : "";
+      return `<div class="pq"><h3 class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></h3>
+        <div class="pinfo">${q.scored ? `<span>正確答案：${esc(right)}</span><span>答對率 ${pct(q.pct)}</span>` : `<span>${esc(q.type)}（不計分）</span>`}<span>平均作答 ${q.avg_time.toFixed(2)} 秒</span><span>作答 ${q.present - q.no_answer}/${q.present} 人</span></div>
+        ${optsOrCloud}${table}</div>`;
+    }).map((h, i) => [R.questions[i].n, h]));
+    // 投影片依原本順序穿插
+    const items = R.questions.map((q) => ({ n: q.n, h: qHtml.get(q.n) }))
+      .concat((R.slides || []).map((sl) => ({ n: sl.n, h: pdfSlideBlock(sl) }))).sort((a, b) => a.n - b.n);
+    return items.map((it, i) => (i === 0 ? pdfHead(detail ? "答題紀錄（詳細版）" : "答題紀錄（簡易版）") : "") + it.h);
+  }
+  function pdfSlideBlock(sl) {
+    const mi = img(sl.media) || img(sl.image);
+    return `<div class="pq pslide"><h3 class="qtitle"><span class="qno">${sl.n}</span><span>${esc(sl.title || "（無標題）")}</span></h3>
+      <div class="pinfo"><span>投影片・不需要作答</span></div>
+      <div class="pslrow">${mi ? `<div class="pslimg"><img src="${mi}" alt=""></div>` : ""}<div class="psltext">${esc(sl.body || "")}</div></div></div>`;
+  }
+  function pdfSlides() {
+    return pdfHead(pView === "list" ? "題目（清單）" : "題目（方格）") + viewPreview(pView);
+  }
+  function makePdf(kind, qn, force) {
+    if (inLine()) return alertBox(LINE_MSG);
+    if (kind === "answers" && !force && R.stats.players > 300) return bigWarn();
+    const cq = R.questions.find((x) => x.n === +qn);
+    const name = { rank: "排名", answers: "答題紀錄_詳細版", "answers-simple": "答題紀錄_簡易版", slides: pView === "list" ? "題目_清單" : "題目_方格", comments: `第${qn}題留言` }[kind];
+    let body = { rank: pdfRank, answers: () => pdfAnswers(true), "answers-simple": () => pdfAnswers(false), slides: pdfSlides, comments: () => pdfComments(cq) }[kind]();
+    if (Array.isArray(body)) body = body.join("");
+    let stage = $("#pdfStage");
+    if (!stage) { stage = document.createElement("div"); stage.id = "pdfStage"; document.body.appendChild(stage); }
+    stage.innerHTML = `<div class="pdf ${kind === "answers" ? "detail" : ""}">${body}<div class="pfoot">${esc(R.title)}・${name.replace("_", "")}</div></div>`;
+    const oldTitle = document.title;
+    document.title = `${R.title}_${name}`;   // 存檔時的預設檔名
+    document.body.classList.add("printing");
+    const done = () => { document.body.classList.remove("printing"); document.title = oldTitle; stage.innerHTML = ""; };
+    window.addEventListener("afterprint", done, { once: true });
+    setTimeout(() => {
+      try { window.print(); } catch (x) { done(); alertBox("這個瀏覽器不支援列印，請改用 Chrome 或 Safari。"); }
+    }, 50);
+  }
+  function bigWarn() {
+    const pages = Math.round(R.questions.reduce((a, q) => a + q.players.length, 0) / 32 + R.questions.length);
+    $("#dlgTitle").textContent = "詳細版頁數過多";
+    $("#dlgBody").innerHTML = `<div class="warnbox">
+      <p>這場遊戲有 <b>${R.stats.players}</b> 位玩家，詳細版會列出每位玩家每一題的作答，大約 <b>${pages}</b> 頁，檔案太大可能跑不出來。</p>
+      <p>建議改下載：</p>
+      <div class="warn-actions">
+        <button class="btn" type="button" data-w="simple">答題 PDF（簡易版）</button>
+        ${R.excel ? `<button class="btn btn-ghost" type="button" data-w="excel">Excel 報告</button>` : ""}
+        <button class="btn btn-ghost" type="button" data-w="force">仍要下載詳細版</button>
+      </div></div>`;
+    $("#dlgBody").querySelectorAll("[data-w]").forEach((b) => b.addEventListener("click", () => {
+      const w = b.dataset.w; $("#dlg").close();
+      if (w === "simple") makePdf("answers-simple");
+      else if (w === "excel") $("#dlBtn").click();
+      else makePdf("answers", null, true);
+    }));
+    $("#dlg").showModal();
+  }
+  function alertBox(m) {
+    $("#dlgTitle").textContent = "無法下載"; $("#dlgBody").innerHTML = `<p style="padding:16px;margin:0">${esc(m)}</p>`; $("#dlg").showModal();
+  }
+
+  // 題目預覽
+  function slideCard(sl) {
+    const qi = img(sl.image), mi = img(sl.media), mb = sl.mediabox, tb = sl.textbox;
+    const pc = (v) => (v * 100).toFixed(2) + "%";
+    // 依 PDF 裡的實際位置擺放照片與文字
+    const mStyle = mb ? `left:${pc(mb[0])};top:${pc(mb[1])};width:${pc(mb[2])};height:${pc(mb[3])};right:auto;transform:none;max-width:none;` : "";
+    let tStyle = "";
+    if (tb) {
+      const mid = tb[0] + tb[2] / 2;
+      tStyle = Math.abs(mid - 0.5) < 0.12
+        ? `left:5%;width:90%;top:${pc(tb[1])};transform:none;justify-items:center;text-align:center;`
+        : `left:${pc(Math.max(0.03, tb[0]))};width:${pc(Math.min(0.9, Math.max(0.3, tb[2] + 0.04)))};top:${pc(tb[1])};transform:none;`;
+    }
+    return `<div class="slide"><span class="lbl">${sl.n} ・ 投影片</span>
+      <div class="frame slidecard ${mi ? "" : "nomedia"}">${qi ? `<img src="${qi}" alt="">` : ""}
+        ${mi ? `<img class="media" src="${mi}" alt="投影片 ${sl.n} 圖片" style="${mStyle}">` : ""}
+        <div class="sbox" style="${tStyle}">${sl.title ? `<div class="st">${esc(sl.title)}</div>` : ""}${sl.body ? `<div class="sb">${esc(sl.body)}</div>` : ""}</div>
+      </div></div>`;
+  }
+  function viewPreview(mode) {
+    const items = R.questions.map((q) => ({ n: q.n, q })).concat((R.slides || []).map((sl) => ({ n: sl.n, sl }))).sort((a, b) => a.n - b.n);
+    return `<div class="slides ${mode === "list" ? "list" : ""}">${items.map(({ q, sl }) => {
+      if (sl) return slideCard(sl);
+      const qi = img(q.image), mi = img(q.media);
+      return `<div class="slide"><span class="lbl">${q.n} ・ ${esc(q.type)}</span>
+        <div class="frame ${isText(q) ? "textq" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
+          <div class="qt">${esc(q.text)}</div>
+          ${mi ? `<img class="media" src="${mi}" alt="第 ${q.n} 題圖片">` : ""}
+          ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : ""}
+          <div class="grid4">${q.options.map((o, i) => {
+            const src = img(o.image);
+            return `<div class="a k${(i % 4) + 1}"><em>${SHAPES[i]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${esc(o.text)}</span>${o.correct ? "<em>✓</em>" : ""}</div>`;
+          }).join("")}</div>
+        </div></div>`;
+    }).join("")}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
