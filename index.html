@@ -430,6 +430,15 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pdf-btn { white-space: nowrap; }
 .pdf-btn::before { content: "↓ "; }
+/* 下載按鈕：淺色底，比一般按鈕醒目 */
+.pdf-btn, #dlBtn, .warn-actions .btn-ghost[data-w="excel"], .linkbtn[data-pdf="comments"] {
+  background: var(--accent-soft); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-weight: 600;
+}
+.linkbtn[data-pdf="comments"] { padding: 6px 12px; border-radius: 10px; }
+.pdf-btn:hover, #dlBtn:hover, .warn-actions .btn-ghost[data-w="excel"]:hover, .linkbtn[data-pdf="comments"]:hover {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+}
+#dlBtn::before { content: "↓ "; }
 .rec { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #fff4d6; color: #b7791f; font-size: .78em; font-weight: 700; vertical-align: 1px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rec { background: #4a3a12; color: #f6c453; } }
 :root[data-theme="dark"] .rec { background: #4a3a12; color: #f6c453; }
