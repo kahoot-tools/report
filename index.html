@@ -64,12 +64,12 @@ button { cursor: pointer; }
 
 /* ---------- 查詢頁 ---------- */
 .lock { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding-block: 32px; }
-.lock-card { width: 100%; max-width: 420px; display: grid; gap: 22px; }
+.lock-card { width: 100%; max-width: 480px; display: grid; gap: 22px; }
 .shapes { display: flex; gap: 6px; }
 .shape { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-size: 12px; line-height: 1; flex: none; }
 .s1 { background: var(--k1); } .s2 { background: var(--k2); } .s3 { background: var(--k3); } .s4 { background: var(--k4); }
 .lock h1 { font-family: var(--display); font-weight: var(--display-weight); letter-spacing: .01em; font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
-.lock p { margin: 0; color: var(--muted); }
+.lock p { margin: 0; color: var(--muted); text-wrap: pretty; }
 form.find { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: grid; gap: 16px; }
 .field { display: grid; gap: 6px; }
 .field label { font-weight: 500; font-size: 14px; }
@@ -492,7 +492,7 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .pdf-group { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .pdf .pfoot { margin-top: 14px; color: #6a6380; font-size: 11px; text-align: center; }
 
-.rule { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
+.lock .rule { font-size: 14px; line-height: 1.7; color: var(--ink); text-align: center; margin: 0; padding: 12px 16px; border-radius: 10px; background: var(--accent-soft); }
 .keep { margin-top: 16px; padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); font-size: 14px; line-height: 1.6; }
 .keep.soon { background: #fdecec; color: #8f1d27; }
 :root[data-theme="dark"] .keep.soon { background: #3a1a1e; color: #ffb3ba; }
@@ -524,7 +524,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     <div class="shapes" aria-hidden="true"><span class="shape s1">▲</span><span class="shape s2">◆</span><span class="shape s3">●</span><span class="shape s4">■</span></div>
     <div>
       <h1>Kahoot 遊戲報告查詢</h1>
-      <p>輸入你的 LINE 名稱和 4 位數字碼，就能看到你的完整遊戲報告。不需要註冊或登入。</p>
+      <p>輸入你的 LINE 名稱和 4 位數字碼，就能看到你的完整遊戲報告。<br>不需要註冊或登入。</p>
     </div>
     <form class="find" id="findForm" novalidate>
       <div class="field">
@@ -539,7 +539,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
       <p class="err" id="err" role="alert" hidden></p>
       <button class="btn" id="goBtn" type="submit">查看報告</button>
     </form>
-    <p class="rule">遊戲報告保存至<b>遊戲日期後 30 天</b>，期限過後資料將刪除，無法再查詢或查看。</p>
+    <p class="rule">遊戲報告保存至<b>遊戲日期後 30 天</b>，<br>期限過後資料將刪除，無法再查詢或查看。</p>
     <p class="help">忘記數字碼？請聯絡 <a href="https://lin.ee/VGkH9Ps" target="_blank" rel="noopener">LINE 官方帳號 @791kunoo</a></p>
   </div>
 </main>
