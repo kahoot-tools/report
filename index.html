@@ -490,6 +490,16 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .pdf-group { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .pdf .pfoot { margin-top: 14px; color: #6a6380; font-size: 11px; text-align: center; }
 
+.rlist { display: grid; gap: 12px; padding-top: 22px; }
+.ritem { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 18px 20px; cursor: pointer; font: inherit; color: inherit; }
+.ritem:hover { border-color: var(--accent); }
+.ritem[disabled] { opacity: .6; cursor: progress; }
+.rmain { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.rmain b { font-size: 17px; overflow-wrap: anywhere; }
+.rmain .muted { font-size: 14px; }
+.rgo { font-size: 28px; color: var(--muted); line-height: 1; }
+.backlink { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 700; font-size: 14px; }
+#listView .top h1 { font-family: var(--display); font-size: clamp(24px, 5vw, 34px); margin: 0; }
 footer { margin-top: 36px; font-size: 13px; color: var(--muted); text-align: center; }
 footer a { color: var(--accent); }
 footer { display: grid; gap: 8px; justify-items: center; }
@@ -525,11 +535,23 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   </div>
 </main>
 
+<!-- 報告清單（一位客戶有多份報告時） -->
+<main id="listView" class="wrap" hidden>
+  <header class="top">
+    <span class="eyebrow">Kahoot 遊戲報告</span>
+    <h1>你的報告</h1>
+    <p class="muted" id="listNote" style="margin:0"></p>
+  </header>
+  <div class="rlist" id="rList"></div>
+  <p class="err" id="listErr" role="alert" hidden></p>
+  <footer><p>報告問題請聯絡 <a href="https://lin.ee/VGkH9Ps" target="_blank" rel="noopener">LINE 官方帳號 @791kunoo</a></p></footer>
+</main>
+
 <!-- 報告頁 -->
 <div id="reportView" class="wrap" hidden>
   <header class="top">
     <div class="top-row">
-      <span class="eyebrow">Kahoot 遊戲報告</span>
+      <span class="eyebrow"><button class="backlink" id="backBtn" type="button" hidden>‹ 我的報告</button><span id="eyebrowText">Kahoot 遊戲報告</span></span>
       <div class="actions">
         <button class="btn-ghost btn" id="dlBtn" type="button" hidden>下載 Excel 報告</button>
       </div>
@@ -622,7 +644,12 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     try {
       const data = await lookup(name, code);
       if (!data) showErr("找不到報告。請確認 LINE 名稱和數字碼是否和客服提供的一樣。");
-      else { R = data; openReport(); }
+      else if (data.type === "index") {
+        IDX = data.reports || [];
+        if (!IDX.length) showErr("找不到報告。請確認 LINE 名稱和數字碼是否和客服提供的一樣。");
+        else if (IDX.length === 1) await openFile(IDX[0].file);
+        else showList();
+      } else { IDX = null; R = data; openReport(); }
     } catch (x) {
       showErr("找不到報告。請確認 LINE 名稱和數字碼是否和客服提供的一樣。");
     } finally { btn.disabled = false; btn.textContent = "查看報告"; }
@@ -638,6 +665,32 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
+
+  // ---------- 報告清單 ----------
+  let IDX = null;
+  async function openFile(file) {
+    const res = await fetch("reports/" + file + ".json", { cache: "no-store" });
+    if (!res.ok) throw new Error("not found");
+    R = await res.json(); openReport();
+  }
+  function showList() {
+    $("#lockView").hidden = true; $("#reportView").hidden = true; $("#listView").hidden = false;
+    document.title = "你的報告｜Kahoot 報告";
+    $("#listNote").textContent = `共 ${IDX.length} 份報告，點選查看。`;
+    $("#listErr").hidden = true;
+    $("#rList").innerHTML = IDX.map((r, i) => `<button type="button" class="box ritem" data-i="${i}">
+      <span class="rmain"><b>${esc(r.title)}</b><span class="muted">${r.played_on ? "遊戲日期 " + esc(r.played_on) + "・" : ""}${r.players} 位玩家・${r.questions} 題</span></span>
+      <span class="rgo" aria-hidden="true">›</span></button>`).join("");
+    window.scrollTo(0, 0);
+  }
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest(".ritem"); if (!b) return;
+    b.disabled = true;
+    try { await openFile(IDX[+b.dataset.i].file); }
+    catch (x) { $("#listErr").textContent = "這份報告暫時打不開，請稍後再試或聯絡客服。"; $("#listErr").hidden = false; }
+    finally { b.disabled = false; }
+  });
+  $("#backBtn").addEventListener("click", () => { if (typeof stopPodium === "function") stopPodium(); showList(); });
 
   // ---------- 報告 ----------
   const img = (k) => (k && R.images && R.images[k]) || "";
@@ -662,7 +715,9 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   function openReport() {
     normalize();
     pLimit = PAGE_P; qLimit = PAGE_Q; pQuery = "";
-    $("#lockView").hidden = true; $("#reportView").hidden = false;
+    $("#lockView").hidden = true; $("#listView").hidden = true; $("#reportView").hidden = false;
+    const multi = !!(IDX && IDX.length > 1);
+    $("#backBtn").hidden = !multi; $("#eyebrowText").hidden = multi;
     document.title = R.title + "｜Kahoot 報告";
     $("#rTitle").textContent = R.title;
     const c = img(R.cover); $("#rCover").hidden = !c; if (c) $("#rCover").src = c;
