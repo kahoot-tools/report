@@ -345,6 +345,8 @@ tbody tr.click:hover { background: var(--sunken); }
 .slideq .q-body { grid-template-columns: 200px minmax(0, 1fr); }
 .pdf .pslrow { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
 .pdf .pslimg { position: relative; width: 150px; aspect-ratio: 4/3; background: #f1eef5; border-radius: 6px; overflow: hidden; }
+.pdf .pq.pq-card { border: 0; padding: 0; border-radius: 0; }
+.pdf .pq-card .box.q { margin: 0; box-shadow: none; }
 .pdf .pqrow { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 6px; }
 .pdf .pqrow.noimg { grid-template-columns: minmax(0, 1fr); }
 .pdf .pslimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
@@ -1049,32 +1051,36 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span><span style="flex:1"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF<span class=\"nw\">（簡易版）</span><span class=\"rec\">★ 推薦</span>")}${pdfBtn("answers", "答題 PDF<span class=\"nw\">（詳細版）</span>")}</span></div>
       ${shownItems.map(({ q, sl }) => {
         if (sl) return slideAnswerCard(sl);
-        const qi = img(q.media) || img(q.image);
-        return `<article class="box q" data-q="${q.n}">
-          <div class="q-head"><div class="t"><b class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></b><span>${esc(q.type)}</span></div>
-            ${q.scored ? `<div style="display:grid;justify-items:center;font-size:13px">${ring(q.pct, 44)}<span class="num">${pct(q.pct)}</span></div>` : ""}</div>
-          <div class="q-body ${qi ? "" : "noimg"}">
-            ${qi ? `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">` : ""}
-            ${isText(q) ? textBlock(q) : `<div class="opts">
-              ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${shape(i)}<span class="txt">${optLabel(q, i)}</span>
-                <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
-                <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
-              <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
-                <span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:var(--muted)"></u></span><span class="c">${q.no_answer}</span></div>
-            </div>`}
-          </div>
-          <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>
-            <span>作答 ${q.present - q.no_answer}/${q.present}</span><span class="grow"></span>
-            <button class="linkbtn" data-detail="${q.n}">查看每位玩家作答</button></div>
-        </article>`;
+        return answerCard(q);
       }).join("") || `<div class="box empty">沒有符合的題目</div>`}
       ${all.length > shownItems.length ? `<div class="more"><button type="button" class="morebtn" id="qMoreBtn">顯示更多內容（${shownItems.length} / ${all.length}）</button></div>` : ""}`;
   }
-  function slideAnswerCard(sl) {
+  // 答題卡片（網頁與答題 PDF 共用；PDF 不顯示「查看每位玩家作答」）
+  function answerCard(q, pdf) {
+const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
+    return `<article class="box q" data-q="${q.n}">
+      <div class="q-head"><div class="t"><b class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></b><span>${esc(q.type)}</span></div>
+        ${q.scored ? `<div style="display:grid;justify-items:center;font-size:13px">${ring(q.pct, 44)}<span class="num">${pct(q.pct)}</span></div>` : ""}</div>
+      <div class="q-body ${qi ? "" : "noimg"}">
+        ${qi ? `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">` : ""}
+        ${isText(q) ? (pdf ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>` : textBlock(q)) : `<div class="opts">
+          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${shape(i)}<span class="txt">${optLabel(q, i)}</span>
+            <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
+            <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
+          <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
+            <span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:var(--muted)"></u></span><span class="c">${q.no_answer}</span></div>
+        </div>`}
+      </div>
+      <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>
+        <span>作答 ${q.present - q.no_answer}/${q.present}</span><span class="grow"></span>
+        ${pdf ? "" : `<button class="linkbtn" data-detail="${q.n}">查看每位玩家作答</button>`}</div>
+    </article>`;
+  }
+  function slideAnswerCard(sl, pdf) {
     const mi = img(sl.media), bi = img(sl.image);
     return `<article class="box q slideq" data-slide="${sl.n}">
       <div class="q-head"><div class="t"><b class="qtitle"><span class="qno">${sl.n}</span><span>${esc(sl.title || "（無標題）")}</span></b><span>投影片</span></div>
-        <span class="qhelp" tabindex="0" aria-label="投影片不需要作答" data-tip="投影片不需要作答。">?</span></div>
+        ${pdf ? "" : `<span class="qhelp" tabindex="0" aria-label="投影片不需要作答" data-tip="投影片不需要作答。">?</span>`}</div>
       <div class="q-body">
         <div class="sl-thumb">${mi ? `<img src="${mi}" alt="投影片 ${sl.n} 圖片">` : bi ? `<img class="cover" src="${bi}" alt="">` : ""}</div>
         <div class="sl-text">${sl.body ? esc(sl.body) : ""}</div>
@@ -1292,23 +1298,16 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
       </tbody></table>`;
   }
   function pdfAnswers(detail) {
-    const total = R.stats.players || 1;
     const qHtml = new Map(R.questions.map((q) => {
-      const names = new Set(q.players.map((p) => p.name));
       const rows = q.players;
-      const opts = q.options.map((o, i) => { const src = img(o.image); return `<div class="popt ${o.correct ? "right" : ""}">${shape(i)}<span>${src ? thumb(src) : esc(o.text)}</span><span class="${o.correct ? "ok" : "no"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span><span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="r num">${o.count} 人</span></div>`; }).join("")
-        + `<div class="popt none"><span class="shape"></span><span class="muted">沒有作答</span><span></span><span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:#9a93ad"></u></span><span class="r num">${q.no_answer} 人</span></div>`;
-      const optsOrCloud = isText(q) ? `<div class="pcount">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</div>${cloudHtml(q)}` : opts;
       const table = detail && isText(q) ? commentsTable(q) : detail ? `<table style="margin-top:8px"><thead><tr><th>玩家</th><th>作答</th><th>結果</th><th class="r">時間</th><th class="r">得分</th><th class="r">累計</th></tr></thead><tbody>
         ${rows.map((a) => `<tr><td>${esc(a.name)}</td><td>${pdfAns(q, a)}</td><td>${!q.scored ? "—" : a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`}</td><td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${fmt(a.score)}</td><td class="r">${a.total != null ? fmt(a.total) : "—"}</td></tr>`).join("")}
         </tbody></table>` : "";
-      const qi = img(q.media) || img(q.image);
-      return `<div class="pq"><h3 class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></h3>
-        <div class="pqrow ${qi ? "" : "noimg"}">${qi ? `<div class="pslimg"><img src="${qi}" alt=""></div>` : ""}<div class="pqopts">${optsOrCloud}</div></div>${table}</div>`;
+      return `<div class="pq pq-card">${answerCard(q, true)}${table}</div>`;
     }).map((h, i) => [R.questions[i].n, h]));
     // 投影片依原本順序穿插
     const items = R.questions.map((q) => ({ n: q.n, h: qHtml.get(q.n) }))
-      .concat((R.slides || []).map((sl) => ({ n: sl.n, h: pdfSlideBlock(sl) }))).sort((a, b) => a.n - b.n);
+      .concat((R.slides || []).map((sl) => ({ n: sl.n, h: `<div class="pq pq-card pslide">${slideAnswerCard(sl, true)}</div>` }))).sort((a, b) => a.n - b.n);
     return items.map((it, i) => (i === 0 ? pdfHead(detail ? "答題紀錄（詳細版）" : "答題紀錄（簡易版）") : "") + it.h);
   }
   function pdfSlideBlock(sl) {
