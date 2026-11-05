@@ -464,6 +464,8 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rec { background: #4a3a12; color: #f6c453; } }
 :root[data-theme="dark"] .rec { background: #4a3a12; color: #f6c453; }
 .tools .pdf-btn { margin-left: auto; }
+.xhint { margin: 8px 0 0; font-size: 13px; color: var(--muted); text-align: right; }
+@media (max-width: 600px) { .xhint { text-align: left; } }
 
 /* PDF 版面（固定淺色、A4 寬） */
 #pdfStage { display: none; }
@@ -717,7 +719,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     if (inLine()) return alertBox(LINE_MSG);
     const blob = new Blob([b64(R.excel.data)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = R.excel.name || "kahoot-report.xlsx";
+    a.href = URL.createObjectURL(blob); a.download = safeName(R.title || "Kahoot 遊戲報告") + ".xlsx";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
@@ -838,6 +840,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
       pView = b.dataset.view; try { localStorage.setItem("kr-view", pView); } catch (x) {}
       setTab("preview");
     }));
+    if (t === "preview" && $("#quizXlsx")) $("#quizXlsx").addEventListener("click", downloadQuizXlsx);
     if (t === "players") bindPlayers();
     if (t === "questions") { bindQuestions(); bindWc(p); }
     p.querySelectorAll("[data-pdf]:not([data-pdf='comments'])").forEach((b) => b.addEventListener("click", () => makePdf(b.dataset.pdf, b.dataset.qn)));
@@ -972,12 +975,61 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   let pView = (() => { try { return localStorage.getItem("kr-view") || "grid"; } catch (x) { return "grid"; } })();
   const ICON_LIST = `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="3" y="3" width="14" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11" width="14" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
   const ICON_GRID = `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="3" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+  const safeName = (t) => String(t).replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  // 題目 Excel（No／Question／Answer 1-4／Time Limit／Correct Answer）：只放有選項的題目，文字雲與投影片略過
+  const quizQs = () => R.questions.filter((q) => !isText(q) && q.options && q.options.length);
+  // 不用外部套件：自己組一個最簡單的 xlsx（zip 不壓縮）
+  function makeXlsx(rows, widths) {
+    const x = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const col = (i) => String.fromCharCode(65 + i);
+    const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData>${rows.map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) => v === "" || v == null ? "" : typeof v === "number" ? `<c r="${col(ci)}${ri + 1}"><v>${v}</v></c>` : `<c r="${col(ci)}${ri + 1}" t="inlineStr"><is><t xml:space="preserve">${x(v)}</t></is></c>`).join("")}</row>`).join("")}</sheetData></worksheet>`;
+    const files = {
+      "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
+      "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
+      "xl/worksheets/sheet1.xml": sheet,
+    };
+    const enc = new TextEncoder(), crcT = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+    const crc = (d) => { let c = 0xFFFFFFFF; for (const b of d) c = crcT[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+    const parts = [], central = []; let off = 0;
+    for (const [name, text] of Object.entries(files)) {
+      const n = enc.encode(name), d = enc.encode(text), c = crc(d);
+      const h = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, 0, 2], [12, 0x21, 2], [14, c, 4], [18, d.length, 4], [22, d.length, 4], [26, n.length, 2], [28, 0, 2]]
+        .forEach(([o, v, l]) => l === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+      const ch = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, 0, 2], [14, 0x21, 2], [16, c, 4], [20, d.length, 4], [24, d.length, 4], [28, n.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, off, 4]]
+        .forEach(([o, v, l]) => l === 4 ? ch.setUint32(o, v, true) : ch.setUint16(o, v, true));
+      parts.push(h, n, d); central.push(ch, n); off += 30 + n.length + d.length;
+    }
+    const cenSize = central.reduce((a, p) => a + p.byteLength, 0), e = new DataView(new ArrayBuffer(22)), cnt = Object.keys(files).length;
+    [[0, 0x06054b50, 4], [4, 0, 2], [6, 0, 2], [8, cnt, 2], [10, cnt, 2], [12, cenSize, 4], [16, off, 4], [20, 0, 2]]
+      .forEach(([o, v, l]) => l === 4 ? e.setUint32(o, v, true) : e.setUint16(o, v, true));
+    return new Blob([...parts, ...central, e], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+  function downloadQuizXlsx() {
+    if (inLine()) return alertBox(LINE_MSG);
+    const rows = [["No", "Question", "Answer 1", "Answer 2", "Answer 3", "Answer 4", "Time Limit", "Correct Answer"]];
+    quizQs().forEach((q, i) => {
+      const opts = q.options.slice(0, 4).map((o) => (o.text || "").trim());
+      while (opts.length < 4) opts.push("");
+      const right = q.scored ? q.options.slice(0, 4).map((o, k) => o.correct ? k + 1 : 0).filter(Boolean).join(",") : "";
+      rows.push([i + 1, stripNum(q.text).replace(/^\s*\d+\s*[、，,]\s*/, ""), ...opts, q.time || "", /^\d+$/.test(right) ? +right : right]);
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(makeXlsx(rows, [6, 60, 18, 18, 18, 18, 11, 15]));
+    a.download = "Kahoot-Quiz_" + safeName(R.title || "題目") + ".xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
   function viewPreviewTab() {
     return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span>
       <div class="seg" role="group" aria-label="檢視方式">
         <button type="button" data-view="list" aria-pressed="${pView === "list"}" title="清單檢視">${ICON_LIST}<span>清單</span></button>
         <button type="button" data-view="grid" aria-pressed="${pView === "grid"}" title="方格檢視">${ICON_GRID}<span>方格</span></button>
-      </div>${pdfBtn("slides", "下載題目頁 PDF")}</div>${viewPreview(pView)}`;
+      </div><span class="pdf-group">${pdfBtn("slides", "下載題目頁 PDF")}${quizQs().length ? `<button class="btn btn-ghost pdf-btn" type="button" id="quizXlsx">下載題目 Excel</button>` : ""}</span></div>
+      ${quizQs().length ? `<p class="xhint">💡 題目 Excel：下次使用可直接導入題目，或是提供給小幫手代做題目。</p>` : ""}${viewPreview(pView)}`;
   }
   const pdfBtn = (kind, label) => `<button class="btn btn-ghost pdf-btn" type="button" data-pdf="${kind}">${label}</button>`;
   const stripNum = (t) => String(t || "").replace(/^\s*\d+\.\s*/, "");
