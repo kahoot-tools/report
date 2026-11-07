@@ -821,7 +821,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   }
   function openReport() {
     normalize();
-    pLimit = PAGE_P; qLimit = PAGE_Q; pQuery = "";
+    pLimit = PAGE_P; qLimit = PAGE_Q; pQuery = ""; qQuery = "";
     $("#lockView").hidden = true; $("#listView").hidden = true; $("#reportView").hidden = false;
     const multi = !!(IDX && IDX.length > 1);
     $("#backBtn").hidden = !multi; $("#eyebrowText").hidden = multi;
@@ -864,7 +864,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
       downloadQuizXlsx();
     });
     if (t === "players") bindPlayers();
-    if (t === "questions") { bindQuestions(); bindWc(p); }
+    if (t === "questions") bindQuestions();
     p.querySelectorAll("[data-pdf]:not([data-pdf='comments'])").forEach((b) => b.addEventListener("click", () => makePdf(b.dataset.pdf, b.dataset.qn)));
   }
 
@@ -1146,19 +1146,26 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   }
 
   // 題目
-  let qFilter = "all", qLimit = 10;
-  function viewQuestions() {
+  let qFilter = "all", qLimit = 10, qQuery = "";
+  // 搜尋：題號、題目、選項文字、投影片標題與內容
+  function qMatch(x, kw) {
+    if (!kw) return true;
+    if (/^\d+$/.test(kw) && String(x.n) === kw) return true;
+    const t = x.q ? [x.q.text, ...(x.q.options || []).map((o) => o.text || "")] : [x.sl.title || "", x.sl.body || ""];
+    return t.join(" ").normalize("NFKC").toLowerCase().includes(kw);
+  }
+  function qListHtml() {
     // 題目與投影片依原本順序排列，「顯示更多」以項目計算（與 Kahoot 後台相同）
-    const all = R.questions.map((q) => ({ n: q.n, q })).concat((R.slides || []).map((sl) => ({ n: sl.n, sl }))).sort((a, b) => a.n - b.n);
+    const kw = qQuery.trim().normalize("NFKC").toLowerCase();
+    const all = R.questions.map((q) => ({ n: q.n, q })).concat((R.slides || []).map((sl) => ({ n: sl.n, sl }))).sort((a, b) => a.n - b.n)
+      .filter((x) => qMatch(x, kw));
     const shownItems = all.slice(0, qLimit);
-    const list = shownItems.filter((x) => x.q).map((x) => x.q);
-    const total = R.stats.players || 1;
-    return `<div class="tools"><span class="muted">共 ${R.questions.length} 題${R.slides && R.slides.length ? `・${R.slides.length} 張投影片` : ""}</span><span style="flex:1"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF<span class=\"nw\">（簡易版）</span><span class=\"rec\">★ 推薦</span>")}${pdfBtn("answers", "答題 PDF<span class=\"nw\">（詳細版）</span>")}</span></div>
-      ${shownItems.map(({ q, sl }) => {
-        if (sl) return slideAnswerCard(sl);
-        return answerCard(q);
-      }).join("") || `<div class="box empty">沒有符合的題目</div>`}
+    return `${shownItems.map(({ q, sl }) => sl ? slideAnswerCard(sl) : answerCard(q)).join("") || `<div class="box empty">沒有符合的題目</div>`}
       ${all.length > shownItems.length ? `<div class="more"><button type="button" class="morebtn" id="qMoreBtn">顯示更多內容（${shownItems.length} / ${all.length}）</button></div>` : ""}`;
+  }
+  function viewQuestions() {
+    return `<div class="tools"><input class="search" id="qSearch" type="search" placeholder="搜尋題目或選項" value="${esc(qQuery)}" aria-label="搜尋題目或選項"><span class="muted" id="qCount"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF<span class=\"nw\">（簡易版）</span><span class=\"rec\">★ 推薦</span>")}${pdfBtn("answers", "答題 PDF<span class=\"nw\">（詳細版）</span>")}</span></div>
+      <div id="qList">${qListHtml()}</div>`;
   }
   // 答題卡片（網頁與答題 PDF 共用；PDF 不顯示「查看每位玩家作答」）
   function answerCard(q, pdf) {
@@ -1192,10 +1199,22 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
       </div></article>`;
   }
   function bindQuestions() {
-    const mb = $("#qMoreBtn");
-    if (mb) mb.addEventListener("click", () => { const y = window.scrollY; qLimit += PAGE_Q; setTab("questions"); window.scrollTo(0, y); });
-    document.querySelectorAll("[data-detail]").forEach((b) => b.addEventListener("click", () => openQ(+b.dataset.detail)));
+    const list = $("#qList");
+    const draw = () => {
+      list.innerHTML = qListHtml();
+      const kw = qQuery.trim();
+      const nq = R.questions.length, ns = (R.slides || []).length;
+      const hit = kw ? R.questions.filter((q) => qMatch({ n: q.n, q }, kw.normalize("NFKC").toLowerCase())).length : nq;
+      $("#qCount").textContent = kw ? `符合 ${hit} 題` : `共 ${nq} 題${ns ? `・${ns} 張投影片` : ""}`;
+      const mb = $("#qMoreBtn");
+      if (mb) mb.addEventListener("click", () => { qLimit += PAGE_Q; draw(); });
+      list.querySelectorAll("[data-detail]").forEach((b) => b.addEventListener("click", () => openQ(+b.dataset.detail)));
+      bindWc(list);
+    };
+    $("#qSearch").addEventListener("input", (e) => { qQuery = e.target.value; qLimit = PAGE_Q; draw(); });
+    draw();
   }
+
 
   // ---------- 文字雲（自由作答題）----------
   const isText = (q) => !q.options || !q.options.length;
