@@ -465,6 +465,15 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rec { background: #4a3a12; color: #f6c453; } }
 :root[data-theme="dark"] .rec { background: #4a3a12; color: #f6c453; }
 .tools .pdf-btn { margin-left: auto; }
+.pinboard { position: relative; overflow: hidden; border-radius: 10px; line-height: 0; background: var(--sunken); }
+.pinboard img { width: 100%; height: auto; display: block; }
+.pinboard.q-img, .pinboard.qd-img { aspect-ratio: auto; object-fit: initial; height: auto; }
+.pinmk { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; border: 2px solid #fff; color: #fff; font-size: 9px; font-style: normal; font-weight: 700; display: grid; place-items: center; line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+.pinmk.ok { background: #26890c; z-index: 2; } .pinmk.no { background: #e21b3c; }
+.pinboard.mini { width: 110px; flex: none; border-radius: 6px; }
+.pinboard.mini .pinmk { width: 12px; height: 12px; margin: -6px 0 0 -6px; font-size: 7px; border-width: 1.5px; }
+.pinico { background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
+.pdf .pinmk { width: 8px; height: 8px; margin: -4px 0 0 -4px; font-size: 0; border-width: 1px; }
 .tipwrap { position: relative; display: inline-flex; }
 .tipwrap .pdf-btn { width: 100%; }
 .tipbox { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; width: max-content; max-width: min(280px, 80vw);
@@ -802,6 +811,14 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   // ---------- 報告 ----------
   const img = (k) => (k && R.images && R.images[k]) || "";
   const shape = (i, small) => `<span class="shape s${(i % 4) + 1}" aria-hidden="true">${SHAPES[i]}</span>`;
+  // 圖標答題（Pin It）：選項是「正確／不正確的答案」，圖片上標出每位玩家點的位置（座標是圖片寬高的 %）
+  const PIN_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/></svg>`;
+  const optIcon = (q, i) => q.pin ? `<span class="shape pinico" aria-hidden="true">${PIN_SVG}</span>` : shape(i);
+  function pinBoard(q, players, cls) {
+    const src = img(q.media) || img(q.image); if (!src) return "";
+    return `<div class="pinboard ${cls || ""}"><img src="${src}" alt="第 ${q.n} 題圖片">${players.filter((p) => p.pin)
+      .map((p) => `<i class="pinmk ${p.correct ? "ok" : "no"}" style="left:${p.pin[0]}%;top:${p.pin[1]}%" title="${esc(p.name)}">${p.correct ? "✓" : "✕"}</i>`).join("")}</div>`;
+  }
   function optLabel(q, i) {
     const o = q.options[i]; if (!o) return "";
     const src = img(o.image);
@@ -1039,7 +1056,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     quizQs().forEach((q, i) => {
       const notes = [];
       let opts, right;
-      if (isText(q)) {               // 文字雲、填答、滑桿：沒有選項，用 1、2 暫代，答案填 1
+      if (isText(q) || q.pin) {      // 文字雲、填答、滑桿、圖標答題：沒有一般選項，用 1、2 暫代，答案填 1
         opts = ["1", "2"]; right = "1";
         notes.push(q.type || "文字雲");
       } else {
@@ -1137,6 +1154,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
 
   function answerCell(q, a) {
     if (!a.answer) return `<span class="muted">沒有作答</span>`;
+    if (q.pin) return `<span class="ans">${pinBoard(q, [a], "mini") || optIcon(q, 0)}${optLabel(q, a.opt)}</span>`;
     if (a.opt != null) return `<span class="ans">${shape(a.opt)}${optLabel(q, a.opt)}</span>`;
     return esc(a.answer);
   }
@@ -1174,9 +1192,9 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
       <div class="q-head"><div class="t"><b class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></b><span>${esc(q.type)}</span></div>
         ${q.scored ? `<div style="display:grid;justify-items:center;font-size:13px">${ring(q.pct, 44)}<span class="num">${pct(q.pct)}</span></div>` : ""}</div>
       <div class="q-body ${qi ? "" : "noimg"}">
-        ${qi ? `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">` : ""}
+        ${qi ? (q.pin ? pinBoard(q, q.players, "q-img") : `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : ""}
         ${isText(q) ? (pdf ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>` : textBlock(q)) : `<div class="opts">
-          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${shape(i)}<span class="txt">${optLabel(q, i)}</span>
+          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${optIcon(q, i)}<span class="txt">${optLabel(q, i)}</span>
             <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
             <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
           <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
@@ -1361,9 +1379,9 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
     };
     $("#qdlgBody").innerHTML = `
       <div class="qd-top">
-        ${qi ? `<img class="qd-img" src="${qi}" alt="第 ${q.n} 題圖片">` : `<div class="qd-img qd-noimg" aria-hidden="true">🖼</div>`}
+        ${qi ? (q.pin ? pinBoard(q, q.players, "qd-img") : `<img class="qd-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : `<div class="qd-img qd-noimg" aria-hidden="true">🖼</div>`}
         ${isText(q) ? textBlock(q) : `<div class="opts">
-          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${shape(i)}<span class="txt">${optLabel(q, i)}</span>
+          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${optIcon(q, i)}<span class="txt">${optLabel(q, i)}</span>
             <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
             <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
           <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
@@ -1410,7 +1428,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
     if (!a.answer) return `<span class="muted">沒有作答</span>`;
     if (a.opt == null) return esc(a.answer);
     const o = q.options[a.opt], src = img(o && o.image);
-    return `<span class="ans">${shape(a.opt)}${src ? thumb(src) : esc(o.text || "圖片 " + (a.opt + 1))}</span>`;
+    return `<span class="ans">${optIcon(q, a.opt)}${src ? thumb(src) : esc(o.text || "圖片 " + (a.opt + 1))}</span>`;
   }
   function pdfHead(kind) {
     return `<span class="pkind">${kind}</span><h1>${esc(R.title)}</h1>
@@ -1518,10 +1536,10 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
           <div class="qt">${esc(q.text)}</div>
           ${mi ? `<img class="media" src="${mi}" alt="第 ${q.n} 題圖片">` : ""}
           ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : ""}
-          <div class="grid4">${q.options.map((o, i) => {
+          ${q.pin ? "" : `<div class="grid4">${q.options.map((o, i) => {
             const src = img(o.image);
             return `<div class="a k${(i % 4) + 1}"><em>${SHAPES[i]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${esc(o.text)}</span>${o.correct ? "<em>✓</em>" : ""}</div>`;
-          }).join("")}</div>
+          }).join("")}</div>`}
         </div></div>`;
     }).join("")}</div>`;
   }
