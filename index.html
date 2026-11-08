@@ -320,6 +320,15 @@ tbody tr.click:hover { background: var(--sunken); }
 .frame .media.round { aspect-ratio: 1; height: 56%; width: auto; max-width: none; border-radius: 50%; object-fit: cover; }
 /* 排列解謎：左邊題目照片、右邊依正確順序直排 */
 .frame.puzzle .media { left: 4%; transform: none; top: 22%; height: 72%; max-width: 44%; }
+.frame .sld { position: absolute; left: 17%; right: 17%; bottom: 3%; height: 27%; background: #fff; border-radius: 1cqi; z-index: 2; }
+.frame .sld-ticks { position: absolute; left: 4%; right: 4%; top: 22%; height: 46%; display: flex; justify-content: space-between; }
+.frame .sld-ticks i { width: 1.1cqi; border-radius: .6cqi; background: #b3b3b3; }
+.frame .sld-ticks i.end { background: #6e6e6e; } .frame .sld-ticks i.on { background: var(--k2); }
+.frame .sld-val { position: absolute; bottom: 82%; transform: translateX(-50%); background: var(--k2); color: #fff; border-radius: .5cqi; padding: .3cqi 1.6cqi .5cqi; display: grid; justify-items: center; line-height: 1.05; }
+.frame .sld-val::after { content: ""; position: absolute; left: 50%; bottom: -1cqi; transform: translateX(-50%); border: .6cqi solid transparent; border-top: .6cqi solid var(--k2); border-bottom: 0; }
+.frame .sld-val b { font-size: 4.2cqi; font-weight: 800; } .frame .sld-val span { font-size: 1.8cqi; font-weight: 700; }
+.frame .sld-min, .frame .sld-max { position: absolute; bottom: 6%; font-size: 1.7cqi; font-weight: 700; color: #6e6e6e; }
+.frame .sld-min { left: 2%; } .frame .sld-max { right: 2%; }
 .frame .plist { position: absolute; right: 2%; width: 47%; top: 22%; bottom: 3%; display: grid; grid-auto-rows: 1fr; gap: 1.1cqi; }
 .frame .plist .a { min-height: 0; }
 .frame .plist .a img { height: 7cqi; max-height: 100%; width: auto; aspect-ratio: auto; object-fit: contain; }
@@ -403,10 +412,10 @@ tbody tr.click:hover { background: var(--sunken); }
 .frame.slidecard.nomedia .sbox { left: 10%; width: 80%; justify-items: center; text-align: center; }
 .frame.slidecard .st {
   background: rgba(255, 255, 255, .82); color: #2a2238; font-weight: 700; font-size: 3cqi; line-height: 1.3;
-  padding: .4em .8em; border-radius: .8cqi; overflow-wrap: anywhere;
+  padding: .4em .8em; border-radius: .8cqi; overflow-wrap: anywhere; text-align: center;
 }
 .frame.slidecard .sb {
-  background: rgba(255, 255, 255, .82); color: #2a2238; font-weight: 500; font-size: 2cqi; line-height: 1.45;
+  background: rgba(255, 255, 255, .82); color: #2a2238; font-weight: 700; font-size: 2cqi; line-height: 1.45;
   padding: .6em .9em; border-radius: .8cqi; overflow-wrap: anywhere;
 }
 .frame.slidecard .media { left: auto; right: 4%; transform: none; top: 5%; height: 90%; max-width: 44%; border-radius: 1cqi; }
@@ -484,6 +493,12 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .pinico { background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
 .opt.puz { align-items: center; }
 .part { color: #1368ce; font-weight: 700; }
+.qmark { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid var(--ink); border-radius: 50%; font-size: 11px; font-weight: 700; }
+.opt.wrongrow { display: none; font-size: 13px; } .opts.showw .opt.wrongrow { display: grid; }
+.opt.wrongrow .txt { padding-left: 14px; } .twbtn { font-size: 13px; padding: 0 0 0 8px; }
+.pdf .twbtn { display: none; }
+.frame .tgrid { position: absolute; left: 2%; right: 2%; bottom: 2.6%; display: flex; justify-content: center; gap: 1.6cqi; flex-wrap: wrap; }
+.frame .tgrid .a { flex: 0 1 auto; padding: .35em 1.6em; }
 .mpicks { display: inline-grid; gap: 4px; }
 .opt.puz .pstack { grid-column: 1 / 3; display: grid; gap: 4px; }
 .prow { display: flex; align-items: center; gap: 10px; }
@@ -835,6 +850,8 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   const PIN_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/></svg>`;
   // 是非題：Kahoot 顯示藍色◆「是」在前、紅色▲「否」在後
   const isTF = (q) => /true/.test((q && q.type_raw) || "");
+  // 票選活動（Poll）：沒有正確答案，長條用藍色、不顯示 ✓✕ 與分數（和 Kahoot 後台一樣）
+  const isPoll = (q) => /poll/.test((q && q.type_raw) || "") || (q && q.options && q.options.length && !q.scored && !q.pin && !q.puzzle);
   const sIdx = (q, i) => isTF(q) ? (i === 0 ? 1 : 0) : i;
   const optIcon = (q, i) => q.pin ? `<span class="shape pinico" aria-hidden="true">${PIN_SVG}</span>` : shape(sIdx(q, i));
   function pinBoard(q, players, cls) {
@@ -1191,9 +1208,10 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     return esc(a.answer);
   }
   function resultCell(q, a) {
+    if (isPoll(q)) return `<span class="qmark" title="票選活動沒有正確答案">?</span>`;
     if (!q.scored) return `<span class="muted">—</span>`;
     if (q.multi && a.result === "partial") return `<span class="part">～ 部分正確</span>`;
-    if (q.slider && a.result === "partial") return `<span class="part">～ 接近答案</span>`;
+    if (q.slider && a.result === "partial") return `<span class="part">～ 部分正確</span>`;
     return a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`;
   }
 
@@ -1226,14 +1244,15 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     if (q.typed) {    // 填答：每個可接受的答案／不正確的答案／沒有作答
       return `<div class="opts">
         ${q.typed.map((t, i) => `<div class="opt right"><span class="shape tico" aria-hidden="true">T</span><span class="txt">${esc(t)}</span><span class="ok">✓</span>${bar((q.typed_counts || [])[i] || 0)}</div>`).join("")}
-        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">不正確的答案</span><span class="no">✕</span>${bar(q.free_wrong || 0)}</div>
+        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">其他答案${q.typed_wrong && q.typed_wrong.length ? ` <button type="button" class="linkbtn twbtn" onclick="this.closest('.opts').classList.toggle('showw');this.textContent=this.closest('.opts').classList.contains('showw')?'隱藏不正確的答案':'顯示不正確的答案'">顯示不正確的答案</button>` : ""}</span><span class="no">✕</span>${bar(q.free_wrong || 0)}</div>
+        ${(q.typed_wrong || []).map(([t, c]) => `<div class="opt wrongrow"><span></span><span class="txt"><span class="tico" aria-hidden="true">T</span> ${esc(t)}</span><span class="no">✕</span>${bar(c)}</div>`).join("")}
         ${none}</div>`;
     }
     if (q.slider) {   // 滑桿：正確答案（範圍）／不正確的答案／沒有作答
       const sl = q.slider;
       return `<div class="opts">
-        <div class="opt right"><span class="shape pinico" aria-hidden="true">⇿</span><span class="txt">${esc(sl.answer)}<span class="muted">（範圍 ${esc(sl.min)}–${esc(sl.max)}）</span></span><span class="ok">✓</span>${bar(q.free_correct || 0)}</div>
-        ${q.free_close ? `<div class="opt"><span class="shape pinico" aria-hidden="true">≈</span><span class="txt">接近答案（有部分分數）</span><span class="part">～</span>${bar(q.free_close, "#1368ce")}</div>` : ""}
+        <div class="opt right"><span class="shape pinico" aria-hidden="true">⇿</span><span class="txt">${esc(sl.answer)}${sl.unit ? " " + esc(sl.unit) : ""}</span><span class="ok">✓</span>${bar(q.free_correct || 0)}</div>
+        ${q.free_close ? `<div class="opt"><span class="shape pinico" aria-hidden="true">≈</span><span class="txt">答案只有部分正確</span><span class="part">～</span>${bar(q.free_close, "#1368ce")}</div>` : ""}
         <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">不正確的答案</span><span class="no">✕</span>${bar(q.free_wrong || 0)}</div>
         ${none}</div>`;
     }
@@ -1254,7 +1273,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     }
     return `<div class="opts">
       ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${optIcon(q, i)}<span class="txt">${optLabel(q, i)}</span>
-        <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>${bar(o.count)}</div>`).join("")}
+        <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>${bar(o.count, isPoll(q) ? "#1368ce" : "")}</div>`).join("")}
       ${none}</div>`;
   }
   // 答題卡片（網頁與答題 PDF 共用；PDF 不顯示「查看每位玩家作答」）
@@ -1449,20 +1468,20 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
         ${isText(q) ? textBlock(q) : optsBlock(q, total)}
         <div class="qd-time muted">⏱ ${q.time} 秒時間限制</div>
       </div>
-      <div class="qd-stats ${isText(q) ? "one" : ""}">
-        ${isText(q) ? "" : `<div><span>正確答案</span><b>${q.scored ? ring(q.pct, 30) + pct(q.pct) : "—"}</b></div>
+      <div class="qd-stats ${isText(q) || isPoll(q) ? "one" : ""}">
+        ${isText(q) || isPoll(q) ? "" : `<div><span>正確答案</span><b>${q.scored ? ring(q.pct, 30) + pct(q.pct) : "—"}</b></div>
         <div><span>平均答題時間</span><b>${q.avg_time.toFixed(2)} 秒</b></div>`}
         <div><span>參與者已回答</span><b>${q.present}/${total}</b></div>
       </div>
       <div class="tablebox qd-table"><table><thead><tr>
         ${isText(q) ? th("name", "玩家") + th("answer", "已回答") + th("time", "時間", "r")
-          : th("name", "玩家") + th("answer", "已回答") + th("correct", "正確/不正確") + th("time", "時間", "r") + th("score", "分數", "r")}
+          : th("name", "玩家") + th("answer", "已回答") + th("correct", "正確/不正確") + th("time", "時間", "r") + (isPoll(q) ? "" : th("score", "分數", "r"))}
       </tr></thead><tbody>
         ${rows.map((a) => isText(q)
           ? `<tr><td>${esc(a.name)}</td><td>${a.answer ? `<span class="ans"><span class="tico" aria-hidden="true">T</span>${esc(a.answer)}</span>` : `<span class="muted">沒有作答</span>`}</td>
             <td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td></tr>`
           : `<tr><td>${esc(a.name)}</td><td>${answerCell(q, a)}</td><td>${resultCell(q, a)}</td>
-          <td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${fmt(a.score)}</td></tr>`).join("")}
+          <td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td>${isPoll(q) ? "" : `<td class="r">${fmt(a.score)}</td>`}</tr>`).join("")}
       </tbody></table></div>`;
     bindWc($("#qdlgBody"));
     $("#qdlgBody").querySelectorAll("[data-sort]").forEach((b) => b.addEventListener("click", () => {
@@ -1589,13 +1608,23 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
       const mid = tb[0] + tb[2] / 2;
       tStyle = Math.abs(mid - 0.5) < 0.12
         ? `left:5%;width:90%;top:${pc(tb[1])};transform:none;justify-items:center;text-align:center;`
-        : `left:${pc(Math.max(0.03, tb[0]))};width:${pc(Math.min(0.9, Math.max(0.3, tb[2] + 0.04)))};top:${pc(tb[1])};transform:none;`;
+        : sl.ts   // 有字級資料：文字框＝PDF 文字範圍＋左右留白（.8em）
+          ? `left:${pc(Math.max(0.01, tb[0] - 0.8 * sl.ts))};width:${pc(Math.min(0.95, tb[2] + 1.6 * sl.ts + 0.025))};top:${pc(Math.max(0, tb[1] - 0.4 * sl.ts))};transform:none;`
+          : `left:${pc(Math.max(0.03, tb[0]))};width:${pc(Math.min(0.9, Math.max(0.3, tb[2] + 0.04)))};top:${pc(tb[1])};transform:none;`;
     }
     return `<div class="slide"><span class="lbl">${sl.n} ・ 投影片</span>
       <div class="frame slidecard ${mi ? "" : "nomedia"}">${qi ? `<img src="${qi}" alt="">` : ""}
         ${mi ? `<img class="media" src="${mi}" alt="投影片 ${sl.n} 圖片" style="${mStyle}">` : ""}
-        <div class="sbox" style="${tStyle}">${sl.title ? `<div class="st">${esc(sl.title)}</div>` : ""}${sl.body ? `<div class="sb">${esc(sl.body)}</div>` : ""}</div>
+        <div class="sbox" style="${tStyle}">${sl.title ? `<div class="st"${sl.ts ? ` style="font-size:${(sl.ts * 96).toFixed(2)}cqi${sl.tl === 1 ? ";white-space:nowrap" : ""}"` : ""}>${esc(sl.title)}</div>` : ""}${sl.body ? `<div class="sb"${sl.bs ? ` style="font-size:${(sl.bs * 96).toFixed(2)}cqi"` : ""}>${esc(sl.body)}</div>` : ""}</div>
       </div></div>`;
+  }
+  // 滑桿題的預覽：刻度、藍色的正確答案、最小／最大值（和 Kahoot 一樣）
+  function sliderPanel(sl) {
+    const lo = parseFloat(sl.min), hi = parseFloat(sl.max), v = parseFloat(sl.answer);
+    const f = hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5, N = 30, k = Math.round(f * (N - 1));
+    return `<div class="sld"><div class="sld-ticks">${Array.from({ length: N }, (_, i) => `<i class="${i === k ? "on" : i === 0 || i === N - 1 ? "end" : ""}"></i>`).join("")}</div>
+      <div class="sld-val" style="left:${(4 + 92 * k / (N - 1)).toFixed(2)}%"><b>${esc(sl.answer)}</b>${sl.unit ? `<span>${esc(sl.unit)}</span>` : ""}</div>
+      <span class="sld-min">${esc(sl.min)}</span><span class="sld-max">${esc(sl.max)}</span></div>`;
   }
   // 題目照片照 PDF 的位置擺；圓形照片以高度為準保持正圓（PDF 卡片 3:2、預覽 16:9）
   function mediaStyle(q) {
@@ -1613,11 +1642,11 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
       const qi = img(q.image), mi = img(q.media);
       const tile = (o, i, ok) => { const src = img(o.image), k = sIdx(q, i) % 6; return `<div class="a k${k + 1} ${src ? "hasimg" : ""}"><em>${SHAPES[k]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${src ? esc(o.text) : optLabel(q, i)}</span>${ok ? "<em>✓</em>" : ""}</div>`; };
       return `<div class="slide"><span class="lbl">${q.n} ・ ${esc(q.type)}</span>
-        <div class="frame ${isText(q) || q.typed || q.slider ? "textq" : ""} ${q.puzzle ? "puzzle" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
+        <div class="frame ${isText(q) || q.slider ? "textq" : ""} ${q.puzzle ? "puzzle" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
           <div class="qt">${esc(q.text)}</div>
           ${mi ? `<img class="media ${q.media_round ? "round" : ""}" src="${mi}" alt="第 ${q.n} 題圖片"${mediaStyle(q)}>` : ""}
           ${q.puzzle ? `<div class="plist">${q.options.map((o, i) => tile(o, i, true)).join("")}</div>` : ""}
-          ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : q.typed ? `<div class="wc-input">✎ 輸入答案</div>` : q.slider ? `<div class="wc-input">⇿ 滑桿 ${esc(q.slider.min)} – ${esc(q.slider.max)}</div>` : ""}
+          ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : q.typed ? `<div class="tgrid">${q.typed.map((t, i) => `<div class="a k${((i + 1) % 6) + 1}"><span>${esc(t)}</span><em>✓</em></div>`).join("")}</div>` : q.slider ? sliderPanel(q.slider) : ""}
           ${q.pin || q.puzzle ? "" : `<div class="grid4">${q.options.map((o, i) => tile(o, i, o.correct)).join("")}</div>`}
         </div></div>`;
     }).join("")}</div>`;
