@@ -483,6 +483,8 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .pinboard.mini .pinmk { width: 12px; height: 12px; margin: -6px 0 0 -6px; font-size: 7px; border-width: 1.5px; }
 .pinico { background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
 .opt.puz { align-items: center; }
+.part { color: #1368ce; font-weight: 700; }
+.mpicks { display: inline-grid; gap: 4px; }
 .opt.puz .pstack { grid-column: 1 / 3; display: grid; gap: 4px; }
 .prow { display: flex; align-items: center; gap: 10px; }
 .prow .txt img { height: 46px; width: auto; max-width: 90px; object-fit: contain; border-radius: 4px; }
@@ -831,7 +833,10 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   const shape = (i, small) => `<span class="shape s${(i % 6) + 1}" aria-hidden="true">${SHAPES[i % 6]}</span>`;
   // 圖標答題（Pin It）：選項是「正確／不正確的答案」，圖片上標出每位玩家點的位置（座標是圖片寬高的 %）
   const PIN_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/></svg>`;
-  const optIcon = (q, i) => q.pin ? `<span class="shape pinico" aria-hidden="true">${PIN_SVG}</span>` : shape(i);
+  // 是非題：Kahoot 顯示藍色◆「是」在前、紅色▲「否」在後
+  const isTF = (q) => /true/.test((q && q.type_raw) || "");
+  const sIdx = (q, i) => isTF(q) ? (i === 0 ? 1 : 0) : i;
+  const optIcon = (q, i) => q.pin ? `<span class="shape pinico" aria-hidden="true">${PIN_SVG}</span>` : shape(sIdx(q, i));
   function pinBoard(q, players, cls) {
     const src = img(q.media) || img(q.image); if (!src) return "";
     return `<div class="pinboard ${cls || ""}"><img src="${src}" alt="第 ${q.n} 題圖片">${players.filter((p) => p.pin)
@@ -841,6 +846,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     const o = q.options[i]; if (!o) return "";
     const src = img(o.image);
     if (src) return `<img src="${src}" alt="圖片選項 ${i + 1}">`;
+    if (isTF(q) && /^(true|false)$/i.test(o.text || "")) return /^true$/i.test(o.text) ? "是" : "否";
     return o.text ? esc(o.text) : `圖片 ${i + 1}`;
   }
 
@@ -1177,11 +1183,13 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     if (!a.answer) return `<span class="muted">沒有作答</span>`;
     if (q.pin) return `<span class="ans">${pinBoard(q, [a], "mini") || optIcon(q, 0)}${optLabel(q, a.opt)}</span>`;
     if (q.puzzle) return puzzleOrder(q, a);
-    if (a.opt != null) return `<span class="ans">${shape(a.opt)}${optLabel(q, a.opt)}</span>`;
+    if (q.multi) return multiPicks(q, a);
+    if (a.opt != null) return `<span class="ans">${optIcon(q, a.opt)}${optLabel(q, a.opt)}</span>`;
     return esc(a.answer);
   }
   function resultCell(q, a) {
     if (!q.scored) return `<span class="muted">—</span>`;
+    if (q.multi && a.result === "partial") return `<span class="part">～ 部分正確</span>`;
     return a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`;
   }
 
@@ -1211,6 +1219,14 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   function optsBlock(q, total) {
     const bar = (n, col) => `<span class="bar"><u style="width:${(n / total) * 100}%${col ? ";background:" + col : ""}"></u></span><span class="c">${n}</span>`;
     const none = `<div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>${bar(q.no_answer, "var(--muted)")}</div>`;
+    if (q.multi) {    // 複選題：正確組合／答案只有部分正確／不正確的答案／沒有作答（和 Kahoot 後台一樣）
+      return `<div class="opts">
+        <div class="opt right puz"><span class="pstack">${q.options.map((o, i) => o.correct ? `<span class="prow">${shape(i)}<span class="txt">${optLabel(q, i)}</span></span>` : "").join("")}</span>
+          <span class="ok">✓</span>${bar(q.multi_correct || 0)}</div>
+        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">答案只有部分正確</span><span class="part">～</span>${bar(q.multi_partial || 0, "#1368ce")}</div>
+        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">不正確的答案</span><span class="no">✕</span>${bar(q.multi_incorrect || 0)}</div>
+        ${none}</div>`;
+    }
     if (q.puzzle) {   // 排列解謎：正確順序（一組）／其他答案／沒有作答
       return `<div class="opts">
         <div class="opt right puz"><span class="pstack">${q.options.map((o, i) => `<span class="prow">${shape(i)}<span class="txt">${optLabel(q, i)}</span></span>`).join("")}</span>
@@ -1450,6 +1466,10 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
   const LINE_MSG = "LINE 內建瀏覽器無法下載檔案。請點右上角「⋯」，選「用預設瀏覽器開啟」後再下載。";
   const inLine = () => /\bLine\//i.test(navigator.userAgent);
   const thumb = (src) => `<i class="thumb" style="background-image:url('${src}')"></i>`;
+  function multiPicks(q, a) {
+    if (!a.picks || !a.picks.length) return esc(a.answer);
+    return `<span class="mpicks">${a.picks.map((k) => `<span class="ans">${shape(k)}${optLabel(q, k)}</span>`).join("")}</span>`;
+  }
   function puzzleOrder(q, a) {
     if (!a.order || !a.order.length) return esc(a.answer);
     return `<span class="porder">${a.order.map((k) => { const src = img(q.options[k] && q.options[k].image);
@@ -1458,6 +1478,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
   function pdfAns(q, a) {
     if (!a.answer) return `<span class="muted">沒有作答</span>`;
     if (q.puzzle) return puzzleOrder(q, a);
+    if (q.multi) return multiPicks(q, a);
     if (a.opt == null) return esc(a.answer);
     const o = q.options[a.opt], src = img(o && o.image);
     return `<span class="ans">${optIcon(q, a.opt)}${src ? thumb(src) : esc(o.text || "圖片 " + (a.opt + 1))}</span>`;
@@ -1475,7 +1496,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
     const qHtml = new Map(R.questions.map((q) => {
       const rows = q.players;
       const table = detail && isText(q) ? commentsTable(q) : detail ? `<table style="margin-top:8px"><thead><tr><th>玩家</th><th>作答</th><th>結果</th><th class="r">時間</th><th class="r">得分</th><th class="r">累計</th></tr></thead><tbody>
-        ${rows.map((a) => `<tr><td>${esc(a.name)}</td><td>${pdfAns(q, a)}</td><td>${!q.scored ? "—" : a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`}</td><td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${fmt(a.score)}</td><td class="r">${a.total != null ? fmt(a.total) : "—"}</td></tr>`).join("")}
+        ${rows.map((a) => `<tr><td>${esc(a.name)}</td><td>${pdfAns(q, a)}</td><td>${resultCell(q, a)}</td><td class="r">${a.answer && a.time != null ? a.time.toFixed(1) + " 秒" : "—"}</td><td class="r">${fmt(a.score)}</td><td class="r">${a.total != null ? fmt(a.total) : "—"}</td></tr>`).join("")}
         </tbody></table>` : "";
       return `<div class="pq pq-card">${answerCard(q, true)}${table}</div>`;
     }).map((h, i) => [R.questions[i].n, h]));
@@ -1572,7 +1593,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
     return `<div class="slides ${mode === "list" ? "list" : ""}">${items.map(({ q, sl }) => {
       if (sl) return slideCard(sl);
       const qi = img(q.image), mi = img(q.media);
-      const tile = (o, i, ok) => { const src = img(o.image); return `<div class="a k${(i % 6) + 1} ${src ? "hasimg" : ""}"><em>${SHAPES[i % 6]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${esc(o.text)}</span>${ok ? "<em>✓</em>" : ""}</div>`; };
+      const tile = (o, i, ok) => { const src = img(o.image), k = sIdx(q, i) % 6; return `<div class="a k${k + 1} ${src ? "hasimg" : ""}"><em>${SHAPES[k]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${src ? esc(o.text) : optLabel(q, i)}</span>${ok ? "<em>✓</em>" : ""}</div>`; };
       return `<div class="slide"><span class="lbl">${q.n} ・ ${esc(q.type)}</span>
         <div class="frame ${isText(q) ? "textq" : ""} ${q.puzzle ? "puzzle" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
           <div class="qt">${esc(q.text)}</div>
