@@ -1083,7 +1083,10 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
       if (q.puzzle) {                // 排列解謎：項目依正確順序列出
         opts = q.options.map((o, k) => (o.text || "").trim() || "圖片" + (k + 1)); right = opts.map((_, k) => k + 1).join(",");
         notes.push("排列解謎（正確順序 1→" + opts.length + "）");
-      } else if (isText(q) || q.pin) {      // 文字雲、填答、滑桿、圖標答題：沒有一般選項，用 1、2 暫代，答案填 1
+      } else if (q.typed || q.slider) {     // 填答、滑桿：Kahoot 匯入不支援，用 1、2 暫代並在備註寫正確答案
+        opts = ["1", "2"]; right = "1";
+        notes.push(q.typed ? `填答（可接受：${q.typed.join("、")}）` : `滑桿（答案 ${q.slider.answer}，範圍 ${q.slider.min}–${q.slider.max}）`);
+      } else if (isText(q) || q.pin) {      // 文字雲、圖標答題：沒有一般選項，用 1、2 暫代，答案填 1
         opts = ["1", "2"]; right = "1";
         notes.push(q.type || "文字雲");
       } else {
@@ -1190,6 +1193,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   function resultCell(q, a) {
     if (!q.scored) return `<span class="muted">—</span>`;
     if (q.multi && a.result === "partial") return `<span class="part">～ 部分正確</span>`;
+    if (q.slider && a.result === "partial") return `<span class="part">～ 接近答案</span>`;
     return a.correct ? `<span class="ok">✓ 正確</span>` : `<span class="no">✕ 不正確</span>`;
   }
 
@@ -1219,6 +1223,20 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   function optsBlock(q, total) {
     const bar = (n, col) => `<span class="bar"><u style="width:${(n / total) * 100}%${col ? ";background:" + col : ""}"></u></span><span class="c">${n}</span>`;
     const none = `<div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>${bar(q.no_answer, "var(--muted)")}</div>`;
+    if (q.typed) {    // 填答：每個可接受的答案／不正確的答案／沒有作答
+      return `<div class="opts">
+        ${q.typed.map((t, i) => `<div class="opt right"><span class="shape tico" aria-hidden="true">T</span><span class="txt">${esc(t)}</span><span class="ok">✓</span>${bar((q.typed_counts || [])[i] || 0)}</div>`).join("")}
+        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">不正確的答案</span><span class="no">✕</span>${bar(q.free_wrong || 0)}</div>
+        ${none}</div>`;
+    }
+    if (q.slider) {   // 滑桿：正確答案（範圍）／不正確的答案／沒有作答
+      const sl = q.slider;
+      return `<div class="opts">
+        <div class="opt right"><span class="shape pinico" aria-hidden="true">⇿</span><span class="txt">${esc(sl.answer)}<span class="muted">（範圍 ${esc(sl.min)}–${esc(sl.max)}）</span></span><span class="ok">✓</span>${bar(q.free_correct || 0)}</div>
+        ${q.free_close ? `<div class="opt"><span class="shape pinico" aria-hidden="true">≈</span><span class="txt">接近答案（有部分分數）</span><span class="part">～</span>${bar(q.free_close, "#1368ce")}</div>` : ""}
+        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">不正確的答案</span><span class="no">✕</span>${bar(q.free_wrong || 0)}</div>
+        ${none}</div>`;
+    }
     if (q.multi) {    // 複選題：正確組合／答案只有部分正確／不正確的答案／沒有作答（和 Kahoot 後台一樣）
       return `<div class="opts">
         <div class="opt right puz"><span class="pstack">${q.options.map((o, i) => o.correct ? `<span class="prow">${shape(i)}<span class="txt">${optLabel(q, i)}</span></span>` : "").join("")}</span>
@@ -1249,7 +1267,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
         ${qi ? (q.pin ? pinBoard(q, q.players, "q-img") : `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : ""}
         ${isText(q) ? (pdf ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>` : textBlock(q)) : optsBlock(q, total)}
       </div>
-      <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>
+      <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>${q.scored && q.players.some((p) => p.correct) && q.players.every((p) => !p.score) ? `<span>本題不計分</span>` : ""}
         <span>作答 ${q.present - q.no_answer}/${q.present}</span><span class="grow"></span>
         ${pdf ? "" : `<button class="linkbtn" data-detail="${q.n}">查看每位玩家作答</button>`}</div>
     </article>`;
@@ -1283,7 +1301,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
 
 
   // ---------- 文字雲（自由作答題）----------
-  const isText = (q) => !q.options || !q.options.length;
+  const isText = (q) => (!q.options || !q.options.length) && !q.typed && !q.slider;   // 文字雲、開放式（填答、滑桿另外處理）
   const WC_COLORS = ["#e21b3c", "#1368ce", "#d89e00", "#26890c"];
   function cloudItems(q) {
     const groups = new Map();
@@ -1595,11 +1613,11 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
       const qi = img(q.image), mi = img(q.media);
       const tile = (o, i, ok) => { const src = img(o.image), k = sIdx(q, i) % 6; return `<div class="a k${k + 1} ${src ? "hasimg" : ""}"><em>${SHAPES[k]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${src ? esc(o.text) : optLabel(q, i)}</span>${ok ? "<em>✓</em>" : ""}</div>`; };
       return `<div class="slide"><span class="lbl">${q.n} ・ ${esc(q.type)}</span>
-        <div class="frame ${isText(q) ? "textq" : ""} ${q.puzzle ? "puzzle" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
+        <div class="frame ${isText(q) || q.typed || q.slider ? "textq" : ""} ${q.puzzle ? "puzzle" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
           <div class="qt">${esc(q.text)}</div>
           ${mi ? `<img class="media ${q.media_round ? "round" : ""}" src="${mi}" alt="第 ${q.n} 題圖片"${mediaStyle(q)}>` : ""}
           ${q.puzzle ? `<div class="plist">${q.options.map((o, i) => tile(o, i, true)).join("")}</div>` : ""}
-          ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : ""}
+          ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : q.typed ? `<div class="wc-input">✎ 輸入答案</div>` : q.slider ? `<div class="wc-input">⇿ 滑桿 ${esc(q.slider.min)} – ${esc(q.slider.max)}</div>` : ""}
           ${q.pin || q.puzzle ? "" : `<div class="grid4">${q.options.map((o, i) => tile(o, i, o.correct)).join("")}</div>`}
         </div></div>`;
     }).join("")}</div>`;
