@@ -25,7 +25,7 @@
   --good: #1d8549;
   --bad: #c3313d;
   --warn: #a86a00;
-  --k1: #e21b3c; --k2: #1368ce; --k3: #d89e00; --k4: #26890c;
+  --k1: #e21b3c; --k2: #1368ce; --k3: #d89e00; --k4: #26890c; --k5: #0aa3a3; --k6: #864cbf;
   --display: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
   --display-weight: 900;
   --body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
@@ -71,7 +71,7 @@ button { cursor: pointer; }
 .lock-head p { font-size: min(14px, 3.1vw); }
 .lock-head .oneline { white-space: nowrap; }
 .shape { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-size: 12px; line-height: 1; flex: none; }
-.s1 { background: var(--k1); } .s2 { background: var(--k2); } .s3 { background: var(--k3); } .s4 { background: var(--k4); }
+.s1 { background: var(--k1); } .s2 { background: var(--k2); } .s3 { background: var(--k3); } .s4 { background: var(--k4); } .s5 { background: var(--k5); } .s6 { background: var(--k6); }
 .lock h1 { font-family: var(--display); font-weight: var(--display-weight); letter-spacing: .01em; font-size: 30px; line-height: 1.25; margin: 0; text-wrap: balance; }
 .lock p { margin: 0; color: var(--muted); text-wrap: pretty; }
 form.find { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: grid; gap: 16px; }
@@ -313,7 +313,16 @@ tbody tr.click:hover { background: var(--sunken); }
 .frame .a img { height: 4.4cqi; width: auto; aspect-ratio: 4/3; object-fit: cover; border-radius: .4cqi; }
 .frame .a em { font-style: normal; flex: none; }
 .frame .a em:last-child:not(:first-child) { margin-left: auto; }
-.frame .a.k1 { background: var(--k1); } .frame .a.k2 { background: var(--k2); } .frame .a.k3 { background: var(--k3); } .frame .a.k4 { background: var(--k4); }
+.frame .a.k1 { background: var(--k1); } .frame .a.k2 { background: var(--k2); } .frame .a.k3 { background: var(--k3); } .frame .a.k4 { background: var(--k4); } .frame .a.k5 { background: var(--k5); } .frame .a.k6 { background: var(--k6); }
+/* 圖片選項：和 Kahoot 一樣，選項較高、圖片保持原比例 */
+.frame .a.hasimg { min-height: 8.6cqi; padding: .3em .9em; }
+.frame .a.hasimg img { height: 7.4cqi; width: auto; max-width: 34%; aspect-ratio: auto; object-fit: contain; border-radius: .3cqi; }
+.frame .media.round { aspect-ratio: 1; height: 56%; width: auto; max-width: none; border-radius: 50%; object-fit: cover; }
+/* 排列解謎：左邊題目照片、右邊依正確順序直排 */
+.frame.puzzle .media { left: 4%; transform: none; top: 22%; height: 72%; max-width: 44%; }
+.frame .plist { position: absolute; right: 2%; width: 47%; top: 22%; bottom: 3%; display: grid; grid-auto-rows: 1fr; gap: 1.1cqi; }
+.frame .plist .a { min-height: 0; }
+.frame .plist .a img { height: 7cqi; max-height: 100%; width: auto; aspect-ratio: auto; object-fit: contain; }
 
 /* 文字雲 */
 .wc { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5em .45em; font-size: 13px; padding: 6px 0; }
@@ -473,6 +482,15 @@ dialog::backdrop { background: rgba(20, 14, 30, .5); }
 .pinboard.mini { width: 110px; flex: none; border-radius: 6px; }
 .pinboard.mini .pinmk { width: 12px; height: 12px; margin: -6px 0 0 -6px; font-size: 7px; border-width: 1.5px; }
 .pinico { background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
+.opt.puz { align-items: center; }
+.opt.puz .pstack { grid-column: 1 / 3; display: grid; gap: 4px; }
+.prow { display: flex; align-items: center; gap: 10px; }
+.prow .txt img { height: 46px; width: auto; max-width: 90px; object-fit: contain; border-radius: 4px; }
+.porder { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pchip { display: inline-flex; align-items: center; gap: 3px; }
+.pchip .shape { width: 18px; height: 18px; font-size: 9px; }
+.pchip img { height: 26px; width: auto; max-width: 40px; object-fit: contain; border-radius: 3px; }
+.pdf .prow .txt img { height: 26px; } .pdf .opt.puz .pstack { gap: 2px; }
 .pdf .pinmk { width: 8px; height: 8px; margin: -4px 0 0 -4px; font-size: 0; border-width: 1px; }
 .tipwrap { position: relative; display: inline-flex; }
 .tipwrap .pdf-btn { width: 100%; }
@@ -681,7 +699,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
 (() => {
   // 加密：必須和後台 build_report.py 的 derive_lookup / seal 一致
   const ID_PREFIX = "kahoot-report:v3:", KDF_SALT = "kahoot-tools/report:v3", KDF_ITER = 100000;
-  const SHAPES = ["▲", "◆", "●", "■", "▲", "◆"];
+  const SHAPES = ["▲", "◆", "●", "■", "⬟", "▼"];
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const pct = (v) => (v == null ? "—" : Math.round(v * 100) + "%");
@@ -810,7 +828,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
 
   // ---------- 報告 ----------
   const img = (k) => (k && R.images && R.images[k]) || "";
-  const shape = (i, small) => `<span class="shape s${(i % 4) + 1}" aria-hidden="true">${SHAPES[i]}</span>`;
+  const shape = (i, small) => `<span class="shape s${(i % 6) + 1}" aria-hidden="true">${SHAPES[i % 6]}</span>`;
   // 圖標答題（Pin It）：選項是「正確／不正確的答案」，圖片上標出每位玩家點的位置（座標是圖片寬高的 %）
   const PIN_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/></svg>`;
   const optIcon = (q, i) => q.pin ? `<span class="shape pinico" aria-hidden="true">${PIN_SVG}</span>` : shape(i);
@@ -1056,7 +1074,10 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     quizQs().forEach((q, i) => {
       const notes = [];
       let opts, right;
-      if (isText(q) || q.pin) {      // 文字雲、填答、滑桿、圖標答題：沒有一般選項，用 1、2 暫代，答案填 1
+      if (q.puzzle) {                // 排列解謎：項目依正確順序列出
+        opts = q.options.map((o, k) => (o.text || "").trim() || "圖片" + (k + 1)); right = opts.map((_, k) => k + 1).join(",");
+        notes.push("排列解謎（正確順序 1→" + opts.length + "）");
+      } else if (isText(q) || q.pin) {      // 文字雲、填答、滑桿、圖標答題：沒有一般選項，用 1、2 暫代，答案填 1
         opts = ["1", "2"]; right = "1";
         notes.push(q.type || "文字雲");
       } else {
@@ -1155,6 +1176,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   function answerCell(q, a) {
     if (!a.answer) return `<span class="muted">沒有作答</span>`;
     if (q.pin) return `<span class="ans">${pinBoard(q, [a], "mini") || optIcon(q, 0)}${optLabel(q, a.opt)}</span>`;
+    if (q.puzzle) return puzzleOrder(q, a);
     if (a.opt != null) return `<span class="ans">${shape(a.opt)}${optLabel(q, a.opt)}</span>`;
     return esc(a.answer);
   }
@@ -1185,6 +1207,22 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
     return `<div class="tools"><input class="search" id="qSearch" type="search" placeholder="搜尋題目或選項" value="${esc(qQuery)}" aria-label="搜尋題目或選項"><span class="muted" id="qCount"></span><span class="pdf-group">${pdfBtn("answers-simple", "答題 PDF<span class=\"nw\">（簡易版）</span><span class=\"rec\">★ 推薦</span>")}${pdfBtn("answers", "答題 PDF<span class=\"nw\">（詳細版）</span>")}</span></div>
       <div id="qList">${qListHtml()}</div>`;
   }
+  // 選項統計（題目卡片、題目明細共用）
+  function optsBlock(q, total) {
+    const bar = (n, col) => `<span class="bar"><u style="width:${(n / total) * 100}%${col ? ";background:" + col : ""}"></u></span><span class="c">${n}</span>`;
+    const none = `<div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>${bar(q.no_answer, "var(--muted)")}</div>`;
+    if (q.puzzle) {   // 排列解謎：正確順序（一組）／其他答案／沒有作答
+      return `<div class="opts">
+        <div class="opt right puz"><span class="pstack">${q.options.map((o, i) => `<span class="prow">${shape(i)}<span class="txt">${optLabel(q, i)}</span></span>`).join("")}</span>
+          <span class="ok">✓</span>${bar(q.puzzle_correct || 0)}</div>
+        <div class="opt"><span class="shape pinico" aria-hidden="true">⧉</span><span class="txt">其他答案</span><span class="no">✕</span>${bar(q.puzzle_other || 0)}</div>
+        ${none}</div>`;
+    }
+    return `<div class="opts">
+      ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${optIcon(q, i)}<span class="txt">${optLabel(q, i)}</span>
+        <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>${bar(o.count)}</div>`).join("")}
+      ${none}</div>`;
+  }
   // 答題卡片（網頁與答題 PDF 共用；PDF 不顯示「查看每位玩家作答」）
   function answerCard(q, pdf) {
 const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
@@ -1193,13 +1231,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
         ${q.scored ? `<div style="display:grid;justify-items:center;font-size:13px">${ring(q.pct, 44)}<span class="num">${pct(q.pct)}</span></div>` : ""}</div>
       <div class="q-body ${qi ? "" : "noimg"}">
         ${qi ? (q.pin ? pinBoard(q, q.players, "q-img") : `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : ""}
-        ${isText(q) ? (pdf ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>` : textBlock(q)) : `<div class="opts">
-          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${optIcon(q, i)}<span class="txt">${optLabel(q, i)}</span>
-            <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
-            <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
-          <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
-            <span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:var(--muted)"></u></span><span class="c">${q.no_answer}</span></div>
-        </div>`}
+        ${isText(q) ? (pdf ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>` : textBlock(q)) : optsBlock(q, total)}
       </div>
       <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>
         <span>作答 ${q.present - q.no_answer}/${q.present}</span><span class="grow"></span>
@@ -1380,13 +1412,7 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
     $("#qdlgBody").innerHTML = `
       <div class="qd-top">
         ${qi ? (q.pin ? pinBoard(q, q.players, "qd-img") : `<img class="qd-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : `<div class="qd-img qd-noimg" aria-hidden="true">🖼</div>`}
-        ${isText(q) ? textBlock(q) : `<div class="opts">
-          ${q.options.map((o, i) => `<div class="opt ${o.correct ? "right" : ""}">${optIcon(q, i)}<span class="txt">${optLabel(q, i)}</span>
-            <span class="${q.scored ? (o.correct ? "ok" : "no") : "muted"}">${q.scored ? (o.correct ? "✓" : "✕") : ""}</span>
-            <span class="bar"><u style="width:${(o.count / total) * 100}%"></u></span><span class="c">${o.count}</span></div>`).join("")}
-          <div class="opt none"><span class="shape"></span><span class="txt">沒有作答</span><span></span>
-            <span class="bar"><u style="width:${(q.no_answer / total) * 100}%;background:var(--muted)"></u></span><span class="c">${q.no_answer}</span></div>
-        </div>`}
+        ${isText(q) ? textBlock(q) : optsBlock(q, total)}
         <div class="qd-time muted">⏱ ${q.time} 秒時間限制</div>
       </div>
       <div class="qd-stats ${isText(q) ? "one" : ""}">
@@ -1424,8 +1450,14 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
   const LINE_MSG = "LINE 內建瀏覽器無法下載檔案。請點右上角「⋯」，選「用預設瀏覽器開啟」後再下載。";
   const inLine = () => /\bLine\//i.test(navigator.userAgent);
   const thumb = (src) => `<i class="thumb" style="background-image:url('${src}')"></i>`;
+  function puzzleOrder(q, a) {
+    if (!a.order || !a.order.length) return esc(a.answer);
+    return `<span class="porder">${a.order.map((k) => { const src = img(q.options[k] && q.options[k].image);
+      return `<span class="pchip">${shape(k)}${src ? `<img src="${src}" alt="">` : `<span>${esc(q.options[k] ? q.options[k].text : "")}</span>`}</span>`; }).join("")}</span>`;
+  }
   function pdfAns(q, a) {
     if (!a.answer) return `<span class="muted">沒有作答</span>`;
+    if (q.puzzle) return puzzleOrder(q, a);
     if (a.opt == null) return esc(a.answer);
     const o = q.options[a.opt], src = img(o && o.image);
     return `<span class="ans">${optIcon(q, a.opt)}${src ? thumb(src) : esc(o.text || "圖片 " + (a.opt + 1))}</span>`;
@@ -1526,20 +1558,28 @@ const total = R.stats.players || 1, qi = img(q.media) || img(q.image);
         <div class="sbox" style="${tStyle}">${sl.title ? `<div class="st">${esc(sl.title)}</div>` : ""}${sl.body ? `<div class="sb">${esc(sl.body)}</div>` : ""}</div>
       </div></div>`;
   }
+  // 題目照片照 PDF 的位置擺；圓形照片以高度為準保持正圓（PDF 卡片 3:2、預覽 16:9）
+  function mediaStyle(q) {
+    const b = q.mediabox; if (!b) return "";
+    if (q.media_round) {
+      const h = b[3] * 100, w = h * 9 / 16, cx = (b[0] + b[2] / 2) * 100;
+      return ` style="left:${cx - w / 2}%;top:${b[1] * 100}%;width:${w}%;height:${h}%;max-width:none;transform:none"`;
+    }
+    return ` style="left:${b[0] * 100}%;top:${b[1] * 100}%;width:${b[2] * 100}%;height:${b[3] * 100}%;max-width:none;transform:none;object-fit:contain"`;
+  }
   function viewPreview(mode) {
     const items = R.questions.map((q) => ({ n: q.n, q })).concat((R.slides || []).map((sl) => ({ n: sl.n, sl }))).sort((a, b) => a.n - b.n);
     return `<div class="slides ${mode === "list" ? "list" : ""}">${items.map(({ q, sl }) => {
       if (sl) return slideCard(sl);
       const qi = img(q.image), mi = img(q.media);
+      const tile = (o, i, ok) => { const src = img(o.image); return `<div class="a k${(i % 6) + 1} ${src ? "hasimg" : ""}"><em>${SHAPES[i % 6]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${esc(o.text)}</span>${ok ? "<em>✓</em>" : ""}</div>`; };
       return `<div class="slide"><span class="lbl">${q.n} ・ ${esc(q.type)}</span>
-        <div class="frame ${isText(q) ? "textq" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
+        <div class="frame ${isText(q) ? "textq" : ""} ${q.puzzle ? "puzzle" : ""}">${qi ? `<img src="${qi}" alt="">` : ""}
           <div class="qt">${esc(q.text)}</div>
-          ${mi ? `<img class="media" src="${mi}" alt="第 ${q.n} 題圖片">` : ""}
+          ${mi ? `<img class="media ${q.media_round ? "round" : ""}" src="${mi}" alt="第 ${q.n} 題圖片"${mediaStyle(q)}>` : ""}
+          ${q.puzzle ? `<div class="plist">${q.options.map((o, i) => tile(o, i, true)).join("")}</div>` : ""}
           ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : ""}
-          ${q.pin ? "" : `<div class="grid4">${q.options.map((o, i) => {
-            const src = img(o.image);
-            return `<div class="a k${(i % 4) + 1}"><em>${SHAPES[i]}</em>${src ? `<img src="${src}" alt="">` : ""}<span>${esc(o.text)}</span>${o.correct ? "<em>✓</em>" : ""}</div>`;
-          }).join("")}</div>`}
+          ${q.pin || q.puzzle ? "" : `<div class="grid4">${q.options.map((o, i) => tile(o, i, o.correct)).join("")}</div>`}
         </div></div>`;
     }).join("")}</div>`;
   }
