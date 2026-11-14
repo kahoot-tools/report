@@ -1657,6 +1657,30 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
         </div></div>`;
     }).join("")}</div>`;
   }
+  // 題目卡：選項文字換行、選項區變高時，照片自動縮到選項上方，不覆蓋選項（以題目卡高度的 % 設定，列印 PDF 時一樣適用）
+  function fitMedia(fr) {
+    const m = fr.querySelector(":scope > .media"), g = fr.querySelector(":scope > .grid4, :scope > .tgrid");
+    if (!m || !g) return;
+    m.style.maxHeight = ""; if (m.dataset.fitW != null) { m.style.width = m.dataset.fitW; m.style.left = m.dataset.fitL; delete m.dataset.fitW; delete m.dataset.fitL; }
+    const f = fr.getBoundingClientRect(); if (!f.height) return;
+    const r = m.getBoundingClientRect(), top = g.getBoundingClientRect().top - f.height * 0.02;
+    if (r.bottom <= top) return;
+    const h = Math.max(top - r.top, f.height * 0.12);
+    m.style.maxHeight = (h / f.height * 100) + "%";
+    if (m.classList.contains("round") && m.style.width) {   // 圓形照片：寬度跟著縮，中心不變
+      m.dataset.fitW = m.style.width; m.dataset.fitL = m.style.left;
+      const cx = r.left + r.width / 2 - f.left;
+      m.style.width = (h / f.width * 100) + "%"; m.style.left = ((cx - h / 2) / f.width * 100) + "%";
+    }
+  }
+  if (window.ResizeObserver && window.MutationObserver) {
+    const ro = new ResizeObserver((es) => es.forEach((e) => fitMedia(e.target)));
+    new MutationObserver((ms) => ms.forEach((mu) => mu.addedNodes.forEach((n) => {
+      if (n.nodeType !== 1) return;
+      (n.matches(".frame") ? [n] : [...n.querySelectorAll(".frame")]).forEach((fr) => { ro.observe(fr); fitMedia(fr); });
+    }))).observe(document.body, { childList: true, subtree: true });
+  }
+
 })();
 </script>
 </body>
