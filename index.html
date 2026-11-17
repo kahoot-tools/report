@@ -350,6 +350,13 @@ tbody tr.click:hover { background: var(--sunken); }
 .wc-thumb:hover { border-color: var(--accent); }
 .wc-thumb .wc { font-size: 12px; pointer-events: none; }
 .wc-more { position: absolute; left: 0; right: 0; bottom: 8px; font-size: 13px; color: var(--muted); }
+.oc { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; text-align: left; }
+.oc > div { background: var(--c); color: #fff; border-radius: 10px; padding: 10px 12px 9px; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: grid; gap: 6px; align-content: space-between; min-width: 0; }
+.oc b { font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
+.oc small { font-size: 12px; opacity: .85; overflow-wrap: anywhere; }
+.wc-thumb .oc { pointer-events: none; }
+.oc-full { max-height: 60vh; overflow: auto; padding: 2px 2px 6px; }
+.pdf .oc { grid-template-columns: repeat(4, 1fr); gap: 6px; } .pdf .oc > div { padding: 6px 8px; break-inside: avoid; box-shadow: none; } .pdf .oc b { font-size: 11px; } .pdf .oc small { font-size: 9px; }
 .wc-full { overflow: auto; min-height: 0; padding: 16px; background: var(--sunken); display: grid; place-items: center; }
 .wc-full img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.12); background: #fff; min-height: 120px; }
 .ptable thead th { background: var(--sunken); }
@@ -874,6 +881,7 @@ footer .note { max-width: 640px; line-height: 1.7; padding: 12px 16px; border-to
   // 與 Kahoot 後台相同：每題以「該題在場的玩家」為基準（中途加入的玩家不算前面的題目）
   function normalize() {
     R.questions.forEach((q) => {
+      if (q.type_raw === "open-ended") q.type = "開放式問答";   // 舊報告存的是「開放式」
       q.present = q.players.length || R.stats.players;
       const answered = q.players.filter((p) => p.answer).length;
       q.no_answer = Math.max(0, q.present - answered);
@@ -1288,7 +1296,7 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
         ${q.scored ? `<div style="display:grid;justify-items:center;font-size:13px">${ring(q.pct, 44)}<span class="num">${pct(q.pct)}</span></div>` : ""}</div>
       <div class="q-body ${qi ? "" : "noimg"}">
         ${qi ? (q.pin ? pinBoard(q, q.players, "q-img") : `<img class="q-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : ""}
-        ${isText(q) ? (pdf ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>` : textBlock(q)) : optsBlock(q, total)}
+        ${isText(q) ? (pdf ? (isOpen(q) ? `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${openItems(q).length} 則回應</span></div>${cardsHtml(openItems(q))}</div>` : `<div class="wc-box"><div class="wc-head"><span class="muted">共 ${cloudItems(q).reduce((a, c) => a + c.count, 0)} 則留言</span></div>${cloudHtml(q)}</div>`) : textBlock(q)) : optsBlock(q, total)}
       </div>
       <div class="q-foot"><span>時間限制 ${q.time} 秒</span><span>平均作答 ${q.avg_time.toFixed(2)} 秒</span>${q.scored && q.players.some((p) => p.correct) && q.players.every((p) => !p.score) ? `<span>本題不計分</span>` : ""}
         <span>作答 ${q.present - q.no_answer}/${q.present}</span><span class="grow"></span>
@@ -1349,7 +1357,20 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
     const max = items[0].count;
     return `<div class="wc">${cloudOrder(items).map((it) => `<span style="--s:${(0.95 + 1.55 * Math.sqrt((it.count - 1) / Math.max(1, max - 1))).toFixed(2)};background:${colorOf(it.text)}" title="${it.count} 人">${esc(it.text)}</span>`).join("")}</div>`;
   }
-  function textBlock(q) {
+  // 開放式問答：每則回應一張卡片（玩家順序同 Kahoot 後台）
+  const isOpen = (q) => q.type_raw === "open-ended";
+  const openItems = (q) => q.players.filter((p) => String(p.answer || "").trim()).map((p, i) => ({ text: String(p.answer).trim(), name: p.name, color: WC_COLORS[i % 4] }));
+  const cardsHtml = (items) => items.length ? `<div class="oc">${items.map((it) => `<div style="--c:${it.color}"><b>${esc(it.text)}</b><small>${esc(it.name)}</small></div>`).join("")}</div>` : `<p class="muted">沒有回應</p>`;
+  function openBlock(q, full) {
+    const items = openItems(q), none = Math.max(0, q.present - items.length);
+    return `<div class="wc-box">
+      <div class="wc-head"><span class="muted">共 ${items.length} 則回應${none ? `・${none} 人沒有作答` : ""}</span>
+        <span><button class="linkbtn" type="button" data-wc-open="${q.n}">下載卡片圖片</button>　<button class="linkbtn" type="button" data-pdf="comments" data-qn="${q.n}">下載留言（PDF）</button></span></div>
+      ${full ? `<div class="oc-full">${cardsHtml(items)}</div>`
+        : `<button class="wc-thumb" type="button" data-wc-open="${q.n}" aria-label="查看全部回應卡片">${cardsHtml(items.slice(0, 6))}<span class="wc-more">🔍 點擊查看全部 ${items.length} 張卡片</span></button>`}</div>`;
+  }
+  function textBlock(q, full) {
+    if (isOpen(q)) return openBlock(q, full);
     const items = cloudItems(q), total = items.reduce((a, c) => a + c.count, 0);
     const top = items.slice(0, 10);
     return `<div class="wc-box">
@@ -1368,7 +1389,7 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
     const n = q.players.filter((a) => a.answer).length;
     return pdfHead("賓客留言") + `<div class="pq long"><h3 class="qtitle"><span class="qno">${q.n}</span><span>${esc(stripNum(q.text))}</span></h3>
       <div class="pinfo"><span>共 ${n} 則留言</span><span>參與者已回答 ${q.present}/${R.stats.players}</span></div>
-      ${cloudHtml(q)}${commentsTable(q)}</div>`;
+      ${isOpen(q) ? cardsHtml(openItems(q)) : cloudHtml(q)}${commentsTable(q)}</div>`;
   }
   function bindWc(root) {
     root.querySelectorAll("[data-wc-open]").forEach((b) => b.addEventListener("click", () => openCloud(R.questions.find((q) => q.n === +b.dataset.wcOpen))));
@@ -1385,16 +1406,57 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
     wcQ = q;
     $("#wcTitle").textContent = `${q.n}. ${stripNum(q.text)}`;
     $("#wcImg").removeAttribute("src");
+    $("#wcDl").textContent = isOpen(q) ? "下載卡片圖片" : "下載文字雲圖片";
+    $("#wcImg").alt = isOpen(q) ? "全部回應卡片" : "完整文字雲";
     $("#wcdlg").showModal();
-    wcCanvas = await renderCloud(q);
+    wcCanvas = await (isOpen(q) ? renderCards(q) : renderCloud(q));
     if (wcCanvas) $("#wcImg").src = wcCanvas.toDataURL("image/png");
   }
   $("#wcClose").addEventListener("click", () => $("#wcdlg").close());
   $("#wcdlg").addEventListener("click", (e) => { if (e.target === $("#wcdlg")) $("#wcdlg").close(); });
   $("#wcDl").addEventListener("click", () => {
     if (inLine()) return alertBox(LINE_MSG);
-    if (wcCanvas) wcCanvas.toBlob((blob) => blob && saveBlob(blob, `${R.title}_第${wcQ.n}題文字雲.png`), "image/png");
+    if (wcCanvas) wcCanvas.toBlob((blob) => blob && saveBlob(blob, `${R.title}_第${wcQ.n}題${isOpen(wcQ) ? "開放式問答" : "文字雲"}.png`), "image/png");
   });
+  async function renderCards(q) {
+    const items = openItems(q); if (!items.length) return null;
+    const W = 1800, PAD = 70, GAP = 24, COLS = 4, IN = 28, TPX = 34, NPX = 24;
+    const cw = (W - PAD * 2 - GAP * (COLS - 1)) / COLS, tw = cw - IN * 2;
+    const font = (px, wt = 700) => `${wt} ${px}px "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif`;
+    await (document.fonts ? document.fonts.ready : Promise.resolve());
+    const cv = document.createElement("canvas"), ctx = cv.getContext("2d");
+    const wrap = (t, px, wt) => {
+      ctx.font = font(px, wt); const out = [];
+      String(t).split(/\n/).forEach((para) => { let line = "";
+        for (const ch of para) { if (line && !"、，。！？：；）」』,.!?:;)".includes(ch) && ctx.measureText(line + ch).width > tw) { out.push(line); line = ch.trim() ? ch : ""; } else line += ch; }
+        out.push(line); });
+      return out;
+    };
+    const cards = items.map((it) => { const tl = wrap(it.text, TPX, 700), nl = wrap(it.name, NPX, 500).slice(0, 2);
+      return { ...it, tl, nl, h: IN * 2 + tl.length * TPX * 1.4 + 14 + nl.length * NPX * 1.35 }; });
+    const rows = []; for (let i = 0; i < cards.length; i += COLS) rows.push(cards.slice(i, i + COLS));
+    const titlePx = 40, titleH = titlePx * 1.6 + 30;
+    const rowH = rows.map((r) => Math.max(...r.map((c) => c.h)));
+    const H = PAD + titleH + rowH.reduce((a, b) => a + b, 0) + GAP * (rows.length - 1) + PAD;
+    cv.width = W; cv.height = H;
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#2a2238"; ctx.font = font(titlePx); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(stripNum(q.text).slice(0, 60), W / 2, PAD + titlePx * 0.8);
+    let y = PAD + titleH;
+    rows.forEach((r, ri) => {
+      r.forEach((c, ci) => {
+        const x = PAD + ci * (cw + GAP), h = rowH[ri];
+        const rr = (yy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, yy, cw, h, 18) : ctx.rect(x, yy, cw, h); ctx.fill(); };
+        rr(y + 6, "rgba(0,0,0,.2)"); rr(y, c.color);
+        ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#ffffff"; ctx.font = font(TPX, 700);
+        c.tl.forEach((ln, k) => ctx.fillText(ln, x + IN, y + IN + k * TPX * 1.4));
+        ctx.font = font(NPX, 500); ctx.fillStyle = "rgba(255,255,255,.85)";
+        c.nl.forEach((ln, k) => ctx.fillText(ln, x + IN, y + h - IN - (c.nl.length - k) * NPX * 1.35));
+      });
+      y += rowH[ri] + GAP;
+    });
+    return cv;
+  }
   async function renderCloud(q) {
     const items = cloudOrder(cloudItems(q)); if (!items.length) return null;
     const max = Math.max(...items.map((i) => i.count));
@@ -1469,7 +1531,7 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
     $("#qdlgBody").innerHTML = `
       <div class="qd-top">
         ${qi ? (q.pin ? pinBoard(q, q.players, "qd-img") : `<img class="qd-img" src="${qi}" alt="第 ${q.n} 題圖片">`) : `<div class="qd-img qd-noimg" aria-hidden="true">🖼</div>`}
-        ${isText(q) ? textBlock(q) : optsBlock(q, total)}
+        ${isText(q) ? textBlock(q, true) : optsBlock(q, total)}
         <div class="qd-time muted">⏱ ${q.time} 秒時間限制</div>
       </div>
       <div class="qd-stats ${isText(q) || isPoll(q) ? "one" : ""}">
@@ -1652,7 +1714,7 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
           <div class="qt">${esc(q.text)}</div>
           ${mi ? `<img class="media ${q.media_round ? "round" : ""}" src="${mi}" alt="第 ${q.n} 題圖片"${mediaStyle(q)}>` : ""}
           ${q.puzzle ? `<div class="plist">${q.options.map((o, i) => tile(o, i, true)).join("")}</div>` : ""}
-          ${isText(q) ? `<div class="wc-input">✎ 輸入${esc(q.type)}回應</div>` : q.typed ? `<div class="tgrid">${q.typed.map((t, i) => `<div class="a k${((i + 1) % 6) + 1}"><span>${esc(t)}</span><em>✓</em></div>`).join("")}</div>` : q.slider ? sliderPanel(q.slider) : ""}
+          ${isText(q) ? `<div class="wc-input">${isOpen(q) ? "💬 輸入你的回應" : `✎ 輸入${esc(q.type)}回應`}</div>` : q.typed ? `<div class="tgrid">${q.typed.map((t, i) => `<div class="a k${((i + 1) % 6) + 1}"><span>${esc(t)}</span><em>✓</em></div>`).join("")}</div>` : q.slider ? sliderPanel(q.slider) : ""}
           ${q.pin || q.puzzle ? "" : `<div class="grid4">${q.options.map((o, i) => tile(o, i, o.correct)).join("")}</div>`}
         </div></div>`;
     }).join("")}</div>`;
