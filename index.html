@@ -351,12 +351,12 @@ tbody tr.click:hover { background: var(--sunken); }
 .wc-thumb .wc { font-size: 12px; pointer-events: none; }
 .wc-more { position: absolute; left: 0; right: 0; bottom: 8px; font-size: 13px; color: var(--muted); }
 .oc { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; text-align: left; }
-.oc > div { background: var(--c); color: #fff; border-radius: 10px; padding: 10px 12px 9px; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: grid; gap: 6px; align-content: space-between; min-width: 0; }
+.oc > div { background: #fff; color: #2a2238; border: 1px solid #e3dfec; border-radius: 10px; padding: 10px 12px 9px; box-shadow: 0 2px 6px rgba(40,20,80,.08); display: grid; gap: 6px; align-content: space-between; min-width: 0; }
 .oc b { font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
-.oc small { font-size: 12px; opacity: .85; overflow-wrap: anywhere; }
+.oc small { font-size: 12px; color: #8a8399; overflow-wrap: anywhere; }
 .wc-thumb .oc { pointer-events: none; }
 .oc-full { max-height: 60vh; overflow: auto; padding: 2px 2px 6px; }
-.pdf .oc { grid-template-columns: repeat(4, 1fr); gap: 6px; } .pdf .oc > div { padding: 6px 8px; break-inside: avoid; box-shadow: none; } .pdf .oc b { font-size: 11px; } .pdf .oc small { font-size: 9px; }
+.pdf .oc { grid-template-columns: repeat(4, 1fr); gap: 6px; } .pdf .oc > div { padding: 6px 8px; break-inside: avoid; box-shadow: none; border-color: #d9d4e4; } .pdf .oc b { font-size: 11px; } .pdf .oc small { font-size: 9px; }
 .wc-full { overflow: auto; min-height: 0; padding: 16px; background: var(--sunken); display: grid; place-items: center; }
 .wc-full img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.12); background: #fff; min-height: 120px; }
 .ptable thead th { background: var(--sunken); }
@@ -1360,7 +1360,7 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
   // 開放式問答：每則回應一張卡片（玩家順序同 Kahoot 後台）
   const isOpen = (q) => q.type_raw === "open-ended";
   const openItems = (q) => q.players.filter((p) => String(p.answer || "").trim()).map((p, i) => ({ text: String(p.answer).trim(), name: p.name, color: WC_COLORS[i % 4] }));
-  const cardsHtml = (items) => items.length ? `<div class="oc">${items.map((it) => `<div style="--c:${it.color}"><b>${esc(it.text)}</b><small>${esc(it.name)}</small></div>`).join("")}</div>` : `<p class="muted">沒有回應</p>`;
+  const cardsHtml = (items) => items.length ? `<div class="oc">${items.map((it) => `<div><b>${esc(it.text)}</b><small>${esc(it.name)}</small></div>`).join("")}</div>` : `<p class="muted">沒有回應</p>`;
   function openBlock(q, full) {
     const items = openItems(q), none = Math.max(0, q.present - items.length);
     return `<div class="wc-box">
@@ -1439,7 +1439,7 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
     const rowH = rows.map((r) => Math.max(...r.map((c) => c.h)));
     const H = PAD + titleH + rowH.reduce((a, b) => a + b, 0) + GAP * (rows.length - 1) + PAD;
     cv.width = W; cv.height = H;
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#f3f1f8"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#2a2238"; ctx.font = font(titlePx); ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(stripNum(q.text).slice(0, 60), W / 2, PAD + titlePx * 0.8);
     let y = PAD + titleH;
@@ -1447,10 +1447,10 @@ const total = R.stats.players || 1, qi = (q.shot && img(q.shot)) || img(q.media)
       r.forEach((c, ci) => {
         const x = PAD + ci * (cw + GAP), h = rowH[ri];
         const rr = (yy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, yy, cw, h, 18) : ctx.rect(x, yy, cw, h); ctx.fill(); };
-        rr(y + 6, "rgba(0,0,0,.2)"); rr(y, c.color);
-        ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#ffffff"; ctx.font = font(TPX, 700);
+        rr(y + 4, "rgba(40,20,80,.10)"); rr(y, "#ffffff");
+        ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#2a2238"; ctx.font = font(TPX, 700);
         c.tl.forEach((ln, k) => ctx.fillText(ln, x + IN, y + IN + k * TPX * 1.4));
-        ctx.font = font(NPX, 500); ctx.fillStyle = "rgba(255,255,255,.85)";
+        ctx.font = font(NPX, 500); ctx.fillStyle = "#8a8399";
         c.nl.forEach((ln, k) => ctx.fillText(ln, x + IN, y + h - IN - (c.nl.length - k) * NPX * 1.35));
       });
       y += rowH[ri] + GAP;
